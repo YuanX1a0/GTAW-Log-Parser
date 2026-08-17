@@ -43,8 +43,39 @@ namespace Assistant.UI
 
             CloseWindow.Focus();
             StyleController.ValidStyles.Remove("Windows");
+            ApplyLocalization();
             InitializeLanguageSwitcher();
             LoadSettings();
+        }
+
+        /// <summary>
+        /// Applies the localized strings to the window's controls
+        /// </summary>
+        private void ApplyLocalization()
+        {
+            Title = Strings.SettingsTitle;
+            SectionTitleBarLabel.Content = Strings.SettingsTitleBar;
+            SectionOtherLabel.Content = Strings.SettingsOther;
+            SectionThemeLabel.Content = Strings.SettingsTheme;
+            SectionLanguageLabel.Content = Strings.Language;
+
+            DisableForumsButton.Content = Strings.SettingsDisableForumsIcon;
+            DisableFacebrowserButton.Content = Strings.SettingsDisableFacebrowserIcon;
+            DisableUCPButton.Content = Strings.SettingsDisableUCPIcon;
+            DisableReleasesButton.Content = Strings.SettingsDisableReleasesIcon;
+            DisableProjectButton.Content = Strings.SettingsDisableProjectIcon;
+            DisableInformationPopups.Content = Strings.SettingsDisableInfoPopups;
+            DisableWarningPopups.Content = Strings.SettingsDisableWarningPopups;
+            DisableErrorPopups.Content = Strings.SettingsDisableErrorPopups;
+            TimeoutLabel1.Content = Strings.SettingsAbortCheckPrefix;
+            IgnoreBetaVersions.Content = Strings.SettingsIgnoreBeta;
+            FollowSystemColor.Content = Strings.SettingsFollowSystemColor;
+            FollowSystemMode.Content = Strings.SettingsFollowSystemMode;
+            ToggleDarkMode.Content = Strings.SettingsDarkMode;
+            AutoParse.Content = Strings.AutoParse;
+
+            CloseWindow.Content = Strings.Close;
+            Reset.Content = Strings.Reset;
         }
 
         /// <summary>
@@ -65,9 +96,15 @@ namespace Assistant.UI
             Properties.Settings.Default.IgnoreBetaVersions = IgnoreBetaVersions.IsChecked == true;
             Properties.Settings.Default.FollowSystemColor = FollowSystemColor.IsChecked == true;
             Properties.Settings.Default.FollowSystemMode = FollowSystemMode.IsChecked == true;
+            Properties.Settings.Default.AutoParse = AutoParse.IsChecked == true;
 
             StyleController.DarkMode = ToggleDarkMode.IsChecked == true;
             StyleController.Style = Themes.SelectedItem.ToString();
+
+            if (AutoParse.IsChecked == true)
+                _mainWindow.StartAutoParse();
+            else
+                _mainWindow.StopAutoParse();
 
             Properties.Settings.Default.Save();
         }
@@ -93,6 +130,7 @@ namespace Assistant.UI
             FollowSystemMode.IsChecked = Properties.Settings.Default.FollowSystemMode;
             FollowSystemColor.IsEnabled = AppController.CanFollowSystemColor;
             FollowSystemMode.IsEnabled = AppController.CanFollowSystemMode;
+            AutoParse.IsChecked = Properties.Settings.Default.AutoParse;
 
             ToggleDarkMode.IsChecked = StyleController.DarkMode;
             ToggleDarkMode.IsEnabled = !Properties.Settings.Default.FollowSystemMode;
@@ -125,12 +163,10 @@ namespace Assistant.UI
             _handleLanguageChange = false;
 
             LanguageList.Items.Clear();
-            foreach (LocalizationController.Language language in (LocalizationController.Language[])Enum.GetValues(typeof(LocalizationController.Language)))
-                LanguageList.Items.Add(language.ToString());
+            foreach (string code in LocalizationController.AvailableLanguages)
+                LanguageList.Items.Add(LocalizationController.GetDisplayName(code));
 
-            string currentLanguage = LocalizationController.GetLanguageFromCode(LocalizationController.GetLanguage());
-            int index = LanguageList.Items.IndexOf(currentLanguage);
-            LanguageList.SelectedIndex = index >= 0 ? index : 0;
+            LanguageList.SelectedIndex = LocalizationController.GetLanguageIndex(LocalizationController.GetLanguage());
 
             _handleLanguageChange = true;
         }
@@ -144,18 +180,16 @@ namespace Assistant.UI
         /// <param name="e"></param>
         private void LanguageList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            if (!_handleLanguageChange || LanguageList.SelectedItem == null)
+            if (!_handleLanguageChange || LanguageList.SelectedIndex < 0)
                 return;
 
-            LocalizationController.Language selectedLanguage;
-            if (!Enum.TryParse(LanguageList.SelectedItem.ToString(), out selectedLanguage))
-                return;
+            string selectedCode = LocalizationController.AvailableLanguages[LanguageList.SelectedIndex];
 
             // Ignore the event if the language did not actually change
-            if (LocalizationController.GetLanguage() == LocalizationController.GetCodeFromLanguage(selectedLanguage))
+            if (LocalizationController.GetLanguage() == selectedCode)
                 return;
 
-            CultureInfo cultureInfo = new CultureInfo(LocalizationController.GetCodeFromLanguage(selectedLanguage));
+            CultureInfo cultureInfo = new CultureInfo(selectedCode);
             if (MessageBox.Show(Strings.ResourceManager.GetString("SwitchServer", cultureInfo),
                 Strings.ResourceManager.GetString("Restart", cultureInfo), MessageBoxButton.YesNo,
                 MessageBoxImage.Question) != MessageBoxResult.Yes)
@@ -165,7 +199,7 @@ namespace Assistant.UI
                 return;
             }
 
-            LocalizationController.SetLanguage(selectedLanguage);
+            LocalizationController.SetLanguage(selectedCode);
             _mainWindow.RestartApplication();
         }
 
@@ -187,6 +221,7 @@ namespace Assistant.UI
             Properties.Settings.Default.IgnoreBetaVersions = true;
             Properties.Settings.Default.FollowSystemColor = AppController.CanFollowSystemColor;
             Properties.Settings.Default.FollowSystemMode = AppController.CanFollowSystemMode;
+            Properties.Settings.Default.AutoParse = false;
 
             StyleController.DarkMode = AppController.CanFollowSystemMode && StyleController.GetAppMode();
             StyleController.Style = AppController.CanFollowSystemColor ? "Windows" : "Default";

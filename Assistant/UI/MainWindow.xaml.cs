@@ -27,6 +27,8 @@ namespace Assistant.UI
         private bool _isUpdateCheckRunning;
         private bool _isUpdateCheckManual;
         private static bool isRestarting;
+        private System.Windows.Threading.DispatcherTimer _autoParseTimer;
+        private string _lastAutoParsedLog = string.Empty;
 
         /// <summary>
         /// Initializes the main window
@@ -39,6 +41,7 @@ namespace Assistant.UI
             StartupController.InitializeShortcut();
 
             InitializeComponent();
+            ApplyLocalization();
             InitializeTrayIcon();
 
             if (startMinimized)
@@ -56,14 +59,14 @@ namespace Assistant.UI
         /// </summary>
         private void SetupServerList()
         {
-            string currentLanguage = LocalizationController.GetLanguageFromCode(LocalizationController.GetLanguage());
-            for (int i = 0; i < ((LocalizationController.Language[])Enum.GetValues(typeof(LocalizationController.Language))).Length; ++i)
+            string currentLanguage = LocalizationController.GetLanguage();
+            foreach (string code in LocalizationController.AvailableLanguages)
             {
-                LocalizationController.Language language = (LocalizationController.Language)i;
+                string languageCode = code;
 
                 MenuItem menuItem = new MenuItem
                 {
-                    Header = language.ToString()
+                    Header = LocalizationController.GetDisplayName(languageCode)
                 };
 
                 LanguageToolStripMenuItem.Items.Add(menuItem);
@@ -72,11 +75,11 @@ namespace Assistant.UI
                     if (menuItem.IsChecked)
                         return;
 
-                    CultureInfo cultureInfo = new CultureInfo(LocalizationController.GetCodeFromLanguage(language));
+                    CultureInfo cultureInfo = new CultureInfo(languageCode);
                     if (MessageBox.Show(Strings.ResourceManager.GetString("SwitchServer", cultureInfo),
                         Strings.ResourceManager.GetString("Restart", cultureInfo), MessageBoxButton.YesNo,
                         MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-                    LocalizationController.SetLanguage(language);
+                    LocalizationController.SetLanguage(languageCode);
 
                     isRestarting = true;
 
@@ -88,9 +91,37 @@ namespace Assistant.UI
                     System.Windows.Application.Current.Shutdown();
                 };
 
-                if (currentLanguage == language.ToString())
+                if (currentLanguage == languageCode)
                     menuItem.IsChecked = true;
             }
+        }
+
+        /// <summary>
+        /// Applies the localized strings to the window's controls
+        /// </summary>
+        private void ApplyLocalization()
+        {
+            Title = Strings.MainTitle;
+
+            OpenProgramSettings.ToolTip = Strings.TooltipSettings;
+            OpenGithubProject.ToolTip = Strings.TooltipProject;
+            OpenGithubReleases.ToolTip = Strings.TooltipReleases;
+            OpenUCP.ToolTip = Strings.TooltipUCP;
+            OpenFacebrowser.ToolTip = Strings.TooltipFacebrowser;
+            OpenForums.ToolTip = Strings.TooltipForums;
+
+            CheckForUpdatesToolStripMenuItem.Header = Strings.MenuCheckForUpdates;
+            BackupSettingsToolStripMenuItem.Header = Strings.MenuBackupSettings;
+            FilterChatLogToolStripMenuItem.Header = Strings.MenuFilterChatLog;
+            LanguageToolStripMenuItem.Header = Strings.MenuChangeServer;
+            AboutToolStripMenuItem.Header = Strings.MenuAbout;
+            ExitToolStripMenuItem.Header = Strings.MenuExit;
+
+            CheckForUpdatesOnStartup.Content = Strings.CheckForUpdatesAutomatically;
+            RemoveTimestamps.Content = Strings.RemoveTimestamps;
+            Parse.Content = Strings.Parse;
+            SaveParsed.Content = Strings.SaveAs;
+            CopyParsedToClipboard.Content = Strings.CopyToClipboard;
         }
 
         /// <summary>
@@ -143,6 +174,11 @@ namespace Assistant.UI
             RemoveTimestamps.IsChecked = Properties.Settings.Default.RemoveTimestamps;
             CheckForUpdatesOnStartup.IsChecked = Properties.Settings.Default.CheckForUpdatesAutomatically;
 
+            if (Properties.Settings.Default.AutoParse)
+                StartAutoParse();
+            else
+                StopAutoParse();
+
             Properties.Settings.Default.FirstStart = false;
             Properties.Settings.Default.Save();
         }
@@ -157,6 +193,52 @@ namespace Assistant.UI
         {
             AppController.InitializeServerIp();
             Parsed.Text = AppController.ParseChatLog(RemoveTimestamps.IsChecked == true, true);
+            _lastAutoParsedLog = Parsed.Text;
+        }
+
+        /// <summary>
+        /// Starts the real-time parsing timer
+        /// </summary>
+        public void StartAutoParse()
+        {
+            if (_autoParseTimer == null)
+            {
+                _autoParseTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = new TimeSpan(0, 0, 2)
+                };
+                _autoParseTimer.Tick += AutoParseTimer_Tick;
+            }
+
+            _lastAutoParsedLog = string.Empty;
+            _autoParseTimer.Start();
+        }
+
+        /// <summary>
+        /// Stops the real-time parsing timer
+        /// </summary>
+        public void StopAutoParse()
+        {
+            if (_autoParseTimer == null)
+                return;
+
+            _autoParseTimer.Stop();
+        }
+
+        /// <summary>
+        /// Periodically reads the captured chat log and updates
+        /// the main text box only when the content has changed
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void AutoParseTimer_Tick(object sender, EventArgs e)
+        {
+            string parsed = AppController.ParseChatLog(RemoveTimestamps.IsChecked == true);
+            if (parsed == _lastAutoParsedLog)
+                return;
+
+            _lastAutoParsedLog = parsed;
+            Parsed.Text = parsed;
         }
 
         /// <summary>
@@ -623,14 +705,14 @@ namespace Assistant.UI
             {
                 Visible = false,
                 Icon = Properties.Resources.AppIcon,
-                Text= @"GTA World Chat Log Assistant"
+                Text= Strings.TrayText
             };
 
             _trayIcon.MouseDoubleClick += TrayIcon_MouseDoubleClick;
 
             _trayIcon.ContextMenuStrip = new System.Windows.Forms.ContextMenuStrip();
-            _trayIcon.ContextMenuStrip.Items.Add(@"Open", null, ResumeTrayStripMenuItem_Click);
-            _trayIcon.ContextMenuStrip.Items.Add(@"Exit", null, ExitTrayToolStripMenuItem_Click);
+            _trayIcon.ContextMenuStrip.Items.Add(Strings.Open, null, ResumeTrayStripMenuItem_Click);
+            _trayIcon.ContextMenuStrip.Items.Add(Strings.Exit, null, ExitTrayToolStripMenuItem_Click);
         }
 
         /// <summary>

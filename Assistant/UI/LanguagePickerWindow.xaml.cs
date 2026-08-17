@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Diagnostics;
 using Assistant.Controllers;
+using Assistant.Localization;
 using System.Windows.Threading;
 
 namespace Assistant.UI
@@ -26,8 +27,11 @@ namespace Assistant.UI
             timer.Interval = new TimeSpan(0, 0, 0, 0, 10);
             timer.Start();
 
-            foreach (LocalizationController.Language language in (LocalizationController.Language[])Enum.GetValues(typeof(LocalizationController.Language)))
-                LanguageList.Items.Add(language.ToString());
+            foreach (string code in LocalizationController.AvailableLanguages)
+                LanguageList.Items.Add(LocalizationController.GetDisplayName(code));
+
+            StartButton.Content = Strings.Start;
+            Title = Strings.MenuChangeServer;
 
             LanguageList.SelectedIndex = 0;
             _handleListChange = true;
@@ -61,7 +65,7 @@ namespace Assistant.UI
             if (!_handleListChange)
                 return;
 
-            LocalizationController.SetLanguage((LocalizationController.Language)LanguageList.SelectedIndex, false);
+            LocalizationController.SetLanguage(LocalizationController.AvailableLanguages[LanguageList.SelectedIndex], false);
         }
 
         /// <summary>

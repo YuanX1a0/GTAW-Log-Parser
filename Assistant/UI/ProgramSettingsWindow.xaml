@@ -22,10 +22,10 @@
     </Controls:MetroWindow.WindowButtonCommands>
 
     <Grid>
-        <Label Content="Title Bar" HorizontalAlignment="Left" Margin="4,10,0,0" VerticalAlignment="Top" FontSize="14"/>
+        <Label x:Name="SectionTitleBarLabel" Content="Title Bar" HorizontalAlignment="Left" Margin="4,10,0,0" VerticalAlignment="Top" FontSize="14"/>
         <Label Content="|" HorizontalAlignment="Left" Margin="195,-40,0,0" VerticalAlignment="Top" FontSize="160" Width="25"/>
-        <Label Content="Other" HorizontalAlignment="Left" Margin="229,10,0,0" VerticalAlignment="Top" FontSize="14"/>
-        <Label Content="Theme" HorizontalAlignment="Left" Margin="4,176,0,0" VerticalAlignment="Top" FontSize="14"/>
+        <Label x:Name="SectionOtherLabel" Content="Other" HorizontalAlignment="Left" Margin="229,10,0,0" VerticalAlignment="Top" FontSize="14"/>
+        <Label x:Name="SectionThemeLabel" Content="Theme" HorizontalAlignment="Left" Margin="4,176,0,0" VerticalAlignment="Top" FontSize="14"/>
 
         <CheckBox x:Name="DisableForumsButton" Checked="DisableForumsButton_CheckedChanged" Unchecked="DisableForumsButton_CheckedChanged" Content="Disable the forums icon" HorizontalAlignment="Left" Margin="10,38,0,0" VerticalAlignment="Top" Width="193"/>
         <CheckBox x:Name="DisableFacebrowserButton" Checked="DisableFacebrowserButton_CheckedChanged" Unchecked="DisableFacebrowserButton_CheckedChanged" Content="Disable the Facebrowser icon" HorizontalAlignment="Left" Margin="10,61,0,0" VerticalAlignment="Top" Width="193"/>
@@ -43,7 +43,8 @@
         <CheckBox x:Name="FollowSystemMode" IsEnabled="False" Checked="FollowSystemMode_CheckedChanged" Unchecked="FollowSystemMode_CheckedChanged" Content="Follow system app mode (Windows 10)" HorizontalAlignment="Left" Margin="235,184,-2,0" VerticalAlignment="Top" Width="281"/>
         <ComboBox x:Name="Themes" IsEnabled="False" SelectionChanged="Themes_SelectionChanged" HorizontalAlignment="Left" Margin="10,205,0,0" VerticalAlignment="Top" Width="193"/>
         <CheckBox x:Name="ToggleDarkMode" IsEnabled="False" Checked="ToggleDarkMode_CheckedChanged" Unchecked="ToggleDarkMode_CheckedChanged" Content="Dark Mode" HorizontalAlignment="Left" Margin="10,239,0,0" VerticalAlignment="Top" Width="193"/>
-        <Label Content="Language" HorizontalAlignment="Left" Margin="4,262,0,0" VerticalAlignment="Top" FontSize="14"/>
+        <CheckBox x:Name="AutoParse" Content="Automatically parse the chat log in real time" HorizontalAlignment="Left" Margin="235,207,0,0" VerticalAlignment="Top" Width="281"/>
+        <Label x:Name="SectionLanguageLabel" Content="Language" HorizontalAlignment="Left" Margin="4,262,0,0" VerticalAlignment="Top" FontSize="14"/>
         <ComboBox x:Name="LanguageList" SelectionChanged="LanguageList_SelectionChanged" HorizontalAlignment="Left" Margin="10,291,0,0" VerticalAlignment="Top" Width="193"/>
 
         <Button x:Name="CloseWindow" Click="CloseWindow_Click" Content="Close" HorizontalAlignment="Left" Margin="430,287,0,0" VerticalAlignment="Top" Width="75"/>

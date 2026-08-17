@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -79,12 +79,42 @@ namespace Assistant.UI
             Left = _mainWindow.Left + (_mainWindow.Width / 2 - Width / 2);
             Top = _mainWindow.Top + (_mainWindow.Height / 2 - Height / 2);
 
+            ApplyLocalization();
             LoadSettings();
             DispatcherTimer timer = new DispatcherTimer();
             timer.Tick += Timer_Tick;
             timer.Interval = new TimeSpan(0, 0, 0, 1);
             timer.Start();
             _isLoading = false;
+        }
+
+        /// <summary>
+        /// Applies the localized strings to the window's controls
+        /// </summary>
+        private void ApplyLocalization()
+        {
+            Title = Strings.FilterTitle;
+            LoadUnparsed.Content = Strings.LoadUnparsed;
+            BrowseForParsed.Content = Strings.BrowseForParsed;
+            FilterModeToggle.Content = Strings.AdvancedFilter;
+
+            IC.Content = Strings.CriterionLocal;
+            OOC.Content = Strings.CriterionOOC;
+            Emote.Content = Strings.CriterionEmote;
+            Action.Content = Strings.CriterionAction;
+            Radio.Content = Strings.CriterionRadio;
+            PM.Content = Strings.CriterionPM;
+            Ads.Content = Strings.CriterionAds;
+            Other.Content = Strings.CriterionOther;
+
+            RemoveTimestamps.Content = Strings.RemoveTimestamps;
+            SaveFiltered.Content = Strings.SaveAs;
+            CopyFilteredToClipboard.Content = Strings.CopyToClipboard;
+            WordsLabel.Content = Strings.WordsToFilter;
+            Filter.Content = Strings.Filter;
+
+            if (string.IsNullOrWhiteSpace(Words.Text) || Words.Text == "Firstname Lastname")
+                Words.Text = Strings.FirstnameLastname;
         }
 
         /// <summary>

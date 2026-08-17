@@ -1,21 +1,48 @@
-﻿using System.Linq;
-using System.Threading;
-using System.Globalization;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Threading;
+using Assistant.Localization;
 
 namespace Assistant.Controllers
 {
     public static class LocalizationController
     {
-        private static string currentLanguage = string.Empty;
-        public enum Language { English, Spanish }
+        public const string DefaultLanguage = "en-US";
 
-        // Link enum values to language codes
-        private static readonly Dictionary<Language, string> Languages = new Dictionary<Language, string>
+        private static string currentLanguage = string.Empty;
+        private static readonly List<string> Languages = new List<string>();
+
+        /// <summary>
+        /// All available language codes, discovered from the
+        /// JSON files in the Languages directory
+        /// </summary>
+        public static IReadOnlyList<string> AvailableLanguages
         {
-            { Language.English, "en-US" },
-            { Language.Spanish, "es-ES" }
-        };
+            get
+            {
+                if (Languages.Count == 0)
+                    DiscoverLanguages();
+                return Languages;
+            }
+        }
+
+        /// <summary>
+        /// Discovers all available languages from the
+        /// JSON files in the Languages directory.
+        /// The default language always comes first,
+        /// the rest is sorted alphabetically by code
+        /// </summary>
+        private static void DiscoverLanguages()
+        {
+            Languages.Clear();
+            Languages.Add(DefaultLanguage);
+            foreach (string code in JsonResourceManager.GetAvailableLanguages().OrderBy(code => code))
+            {
+                if (code != DefaultLanguage)
+                    Languages.Add(code);
+            }
+        }
 
         /// <summary>
         /// Changes the current thread's UI culture to the one in @currentLanguage 
@@ -28,6 +55,9 @@ namespace Assistant.Controllers
             if (string.IsNullOrWhiteSpace(currentLanguage))
                 currentLanguage = Properties.Settings.Default.LanguageCode;
 
+            if (!AvailableLanguages.Contains(currentLanguage))
+                currentLanguage = DefaultLanguage;
+
             Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo(currentLanguage);
 
             if (!save) return;
@@ -36,7 +66,7 @@ namespace Assistant.Controllers
         }
 
         /// <summary>
-        /// Returns the @currentLanguage
+        /// Returns the @currentLanguage code
         /// </summary>
         /// <returns></returns>
         public static string GetLanguage()
@@ -45,46 +75,47 @@ namespace Assistant.Controllers
         }
 
         /// <summary>
-        /// Sets the @currentLanguage to a given language
-        /// Defaults to English if the language has no key
-        /// in the @Languages dictionary
+        /// Sets the @currentLanguage to a given language code
+        /// Defaults to the default language if the code
+        /// has no matching JSON language file
         /// </summary>
-        /// <param name="language"></param>
+        /// <param name="code"></param>
         /// <param name="save"></param>
-        public static void SetLanguage(Language language, bool save = true)
+        public static void SetLanguage(string code, bool save = true)
         {
-            if (!Languages.ContainsKey(language))
-                language = Language.English;
+            if (!AvailableLanguages.Contains(code))
+                code = DefaultLanguage;
 
-            currentLanguage = Languages[language];
+            currentLanguage = code;
             InitializeLocale(save);
         }
 
         /// <summary>
-        /// Returns a string representation of the current
-        /// language found in the @Languages dictionary
-        /// based on a given language code
+        /// Returns the display name of a given language code
+        /// (the "_DisplayName" key of its JSON file).
+        /// Defaults to the code itself
         /// </summary>
         /// <param name="code"></param>
         /// <returns></returns>
-        public static string GetLanguageFromCode(string code)
+        public static string GetDisplayName(string code)
         {
-            return Languages.FirstOrDefault(x => x.Value == code).Key.ToString();
+            return JsonResourceManager.GetDisplayName(code);
         }
 
         /// <summary>
-        /// Returns the language code corresponding
-        /// to the given language if it is found in
-        /// the @Languages dictionary. Defaults to English
+        /// Returns the index of a given language code
+        /// in the @AvailableLanguages list. Defaults to 0
         /// </summary>
-        /// <param name="language"></param>
+        /// <param name="code"></param>
         /// <returns></returns>
-        public static string GetCodeFromLanguage(Language language)
+        public static int GetLanguageIndex(string code)
         {
-            if (!Languages.ContainsKey(language))
-                language = Language.English;
-
-            return Languages[language];
+            for (int i = 0; i < AvailableLanguages.Count; ++i)
+            {
+                if (AvailableLanguages[i] == code)
+                    return i;
+            }
+            return 0;
         }
     }
 }

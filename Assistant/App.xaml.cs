@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Assistant.UI;
 using System.Windows;
@@ -99,7 +99,7 @@ namespace Assistant
                 //LanguagePickerWindow languagePicker = new LanguagePickerWindow();
                 //languagePicker.Show();
 
-                Settings.Default.LanguageCode = LocalizationController.GetCodeFromLanguage(LocalizationController.Language.English);
+                Settings.Default.LanguageCode = LocalizationController.DefaultLanguage;
                 Settings.Default.HasPickedLanguage = true;
                 Settings.Default.Save();
             }

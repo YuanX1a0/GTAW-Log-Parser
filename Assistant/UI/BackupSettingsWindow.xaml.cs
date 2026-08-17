@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -44,8 +44,29 @@ namespace Assistant.UI
             Left = _mainWindow.Left + (_mainWindow.Width / 2 - Width / 2);
             Top = _mainWindow.Top + (_mainWindow.Height / 2 - Height / 2);
 
+            ApplyLocalization();
             LoadSettings();
             _isLoading = false;
+        }
+
+        /// <summary>
+        /// Applies the localized strings to the window's controls
+        /// </summary>
+        private void ApplyLocalization()
+        {
+            Title = Strings.BackupSettingsTitle;
+            BackupPathLabel.Content = Strings.BackupPathLabel;
+            Browse.Content = Strings.Browse;
+            BackUpChatLogAutomatically.Content = Strings.BackupAutomatically;
+            IntervalLabel1.Content = Strings.BackupEveryPrefix;
+            RemoveTimestamps.Content = Strings.RemoveTimestampsFromBackup;
+            SuppressNotifications.Content = Strings.SuppressNotifications;
+            AlwaysCloseToTray.Content = Strings.AlwaysCloseToTray;
+            StartWithWindows.Content = Strings.StartWithWindows;
+            WarnWithHash.Content = Strings.WarnOnSameHash;
+
+            CloseWindow.Content = Strings.Close;
+            Reset.Content = Strings.Reset;
         }
 
         /// <summary>
@@ -175,7 +196,7 @@ namespace Assistant.UI
         {
             System.Windows.Forms.FolderBrowserDialog directoryBrowserDialog = new System.Windows.Forms.FolderBrowserDialog
             {
-                Description = @"Backup Path",
+                Description = Strings.BackupPathLabel,
                 RootFolder = Environment.SpecialFolder.MyComputer,
                 SelectedPath = string.IsNullOrWhiteSpace(BackupPath.Text) || !Directory.Exists(BackupPath.Text) ? Path.GetPathRoot(Environment.SystemDirectory) : BackupPath.Text,
                 ShowNewFolderButton = true
