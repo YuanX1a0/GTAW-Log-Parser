@@ -954,6 +954,168 @@ namespace Assistant.Localization {
             }
         }
 
+        internal static string SectionTranslation {
+            get {
+                return ResourceManager.GetString("SectionTranslation", resourceCulture);
+            }
+        }
+
+        internal static string TranslationEnabled {
+            get {
+                return ResourceManager.GetString("TranslationEnabled", resourceCulture);
+            }
+        }
+
+        internal static string TargetLanguage {
+            get {
+                return ResourceManager.GetString("TargetLanguage", resourceCulture);
+            }
+        }
+
+        internal static string TranslationProvider {
+            get {
+                return ResourceManager.GetString("TranslationProvider", resourceCulture);
+            }
+        }
+
+        internal static string TranslationProviderGoogle {
+            get {
+                return ResourceManager.GetString("TranslationProviderGoogle", resourceCulture);
+            }
+        }
+
+        internal static string TranslationProviderDeepSeek {
+            get {
+                return ResourceManager.GetString("TranslationProviderDeepSeek", resourceCulture);
+            }
+        }
+
+        internal static string DeepSeekApiKey {
+            get {
+                return ResourceManager.GetString("DeepSeekApiKey", resourceCulture);
+            }
+        }
+
+        internal static string DeepSeekModel {
+            get {
+                return ResourceManager.GetString("DeepSeekModel", resourceCulture);
+            }
+        }
+
+        internal static string TranslationDisplayMode {
+            get {
+                return ResourceManager.GetString("TranslationDisplayMode", resourceCulture);
+            }
+        }
+
+        internal static string TranslationDisplayAppend {
+            get {
+                return ResourceManager.GetString("TranslationDisplayAppend", resourceCulture);
+            }
+        }
+
+        internal static string TranslationDisplayReplace {
+            get {
+                return ResourceManager.GetString("TranslationDisplayReplace", resourceCulture);
+            }
+        }
+
+        internal static string TranslationPrompt {
+            get {
+                return ResourceManager.GetString("TranslationPrompt", resourceCulture);
+            }
+        }
+
+        internal static string TranslationStyle {
+            get {
+                return ResourceManager.GetString("TranslationStyle", resourceCulture);
+            }
+        }
+
+        internal static string TranslationStyleCasual {
+            get {
+                return ResourceManager.GetString("TranslationStyleCasual", resourceCulture);
+            }
+        }
+
+        internal static string TranslationStyleFormal {
+            get {
+                return ResourceManager.GetString("TranslationStyleFormal", resourceCulture);
+            }
+        }
+
+        internal static string TranslationStyleLiterary {
+            get {
+                return ResourceManager.GetString("TranslationStyleLiterary", resourceCulture);
+            }
+        }
+
+        internal static string TranslationBulkHotkey {
+            get {
+                return ResourceManager.GetString("TranslationBulkHotkey", resourceCulture);
+            }
+        }
+
+        internal static string AutoTranslate {
+            get {
+                return ResourceManager.GetString("AutoTranslate", resourceCulture);
+            }
+        }
+
+        internal static string AutoTranslateHotkey {
+            get {
+                return ResourceManager.GetString("AutoTranslateHotkey", resourceCulture);
+            }
+        }
+
+        internal static string SourceLanguage {
+            get {
+                return ResourceManager.GetString("SourceLanguage", resourceCulture);
+            }
+        }
+
+        internal static string SourceLanguageAuto {
+            get {
+                return ResourceManager.GetString("SourceLanguageAuto", resourceCulture);
+            }
+        }
+
+        internal static string SendTranslationEnabled {
+            get {
+                return ResourceManager.GetString("SendTranslationEnabled", resourceCulture);
+            }
+        }
+
+        internal static string SendTranslationHotkey {
+            get {
+                return ResourceManager.GetString("SendTranslationHotkey", resourceCulture);
+            }
+        }
+
+        internal static string SendOverlayTitle {
+            get {
+                return ResourceManager.GetString("SendOverlayTitle", resourceCulture);
+            }
+        }
+
+        internal static string SendOverlaySend {
+            get {
+                return ResourceManager.GetString("SendOverlaySend", resourceCulture);
+            }
+        }
+
+        internal static string SendOverlayCancel {
+            get {
+                return ResourceManager.GetString("SendOverlayCancel", resourceCulture);
+            }
+        }
+
+        internal static string SendOverlayApply {
+            get {
+                return ResourceManager.GetString("SendOverlayApply", resourceCulture);
+            }
+        }
+
         internal static string Close {
             get {
                 return ResourceManager.GetString("Close", resourceCulture);

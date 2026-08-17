@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
@@ -45,6 +46,8 @@ namespace Assistant.UI
             StyleController.ValidStyles.Remove("Windows");
             ApplyLocalization();
             InitializeLanguageSwitcher();
+            InitializeTargetLanguageSwitcher();
+            InitializeTranslationControls();
             LoadSettings();
         }
 
@@ -54,10 +57,11 @@ namespace Assistant.UI
         private void ApplyLocalization()
         {
             Title = Strings.SettingsTitle;
-            SectionTitleBarLabel.Content = Strings.SettingsTitleBar;
-            SectionOtherLabel.Content = Strings.SettingsOther;
-            SectionThemeLabel.Content = Strings.SettingsTheme;
-            SectionLanguageLabel.Content = Strings.Language;
+            TabTitleBar.Header = Strings.SettingsTitleBar;
+            TabOther.Header = Strings.SettingsOther;
+            TabTheme.Header = Strings.SettingsTheme;
+            TabLanguage.Header = Strings.Language;
+            TabTranslation.Header = Strings.SectionTranslation;
 
             DisableForumsButton.Content = Strings.SettingsDisableForumsIcon;
             DisableFacebrowserButton.Content = Strings.SettingsDisableFacebrowserIcon;
@@ -73,6 +77,25 @@ namespace Assistant.UI
             FollowSystemMode.Content = Strings.SettingsFollowSystemMode;
             ToggleDarkMode.Content = Strings.SettingsDarkMode;
             AutoParse.Content = Strings.AutoParse;
+            TranslationEnabled.Content = Strings.TranslationEnabled;
+            TargetLanguageLabel.Content = Strings.TargetLanguage;
+            TranslationBulkHotkeyLabel.Content = Strings.TranslationBulkHotkey;
+            AutoTranslateCheckBox.Content = Strings.AutoTranslate;
+            AutoTranslateHotkeyLabel.Content = Strings.AutoTranslateHotkey;
+            TranslationProviderLabel.Content = Strings.TranslationProvider;
+            DeepSeekApiKeyLabel.Content = Strings.DeepSeekApiKey;
+            DeepSeekModelLabel.Content = Strings.DeepSeekModel;
+            TranslationDisplayModeLabel.Content = Strings.TranslationDisplayMode;
+            TranslationPromptLabel.Content = Strings.TranslationPrompt;
+            SendTranslationEnabled.Content = Strings.SendTranslationEnabled;
+            SendSourceLanguageLabel.Content = Strings.SourceLanguage;
+            SendTargetLanguageLabel.Content = Strings.TargetLanguage;
+            SendTranslationKeyLabel.Content = Strings.SendTranslationHotkey;
+            SendProviderLabel.Content = Strings.TranslationProvider;
+            SendApiKeyLabel.Content = Strings.DeepSeekApiKey;
+            SendModelLabel.Content = Strings.DeepSeekModel;
+            SendPromptLabel.Content = Strings.TranslationPrompt;
+            TranslationStyleLabel.Content = Strings.TranslationStyle;
 
             CloseWindow.Content = Strings.Close;
             Reset.Content = Strings.Reset;
@@ -97,6 +120,35 @@ namespace Assistant.UI
             Properties.Settings.Default.FollowSystemColor = FollowSystemColor.IsChecked == true;
             Properties.Settings.Default.FollowSystemMode = FollowSystemMode.IsChecked == true;
             Properties.Settings.Default.AutoParse = AutoParse.IsChecked == true;
+            Properties.Settings.Default.TranslationEnabled = TranslationEnabled.IsChecked == true;
+            if (TargetLanguageList.SelectedIndex >= 0 && TargetLanguageList.SelectedIndex < TranslationController.TargetLanguages.Length)
+                Properties.Settings.Default.TargetLanguage = TranslationController.TargetLanguages[TargetLanguageList.SelectedIndex].Key;
+            if (SendSourceLanguageList.SelectedIndex == 0)
+                Properties.Settings.Default.SendSourceLanguage = "auto";
+            else if (SendSourceLanguageList.SelectedIndex > 0 && SendSourceLanguageList.SelectedIndex <= TranslationController.TargetLanguages.Length)
+                Properties.Settings.Default.SendSourceLanguage = TranslationController.TargetLanguages[SendSourceLanguageList.SelectedIndex - 1].Key;
+            if (SendTargetLanguageList.SelectedIndex >= 0 && SendTargetLanguageList.SelectedIndex < TranslationController.TargetLanguages.Length)
+                Properties.Settings.Default.SendTargetLanguage = TranslationController.TargetLanguages[SendTargetLanguageList.SelectedIndex].Key;
+            Properties.Settings.Default.TranslationProvider = TranslationProviderList.SelectedIndex == 1 ? "DeepSeek" : "Google";
+            Properties.Settings.Default.DeepSeekApiKey = DeepSeekApiKeyBox.Password;
+            if (DeepSeekModelList.SelectedIndex >= 0)
+                Properties.Settings.Default.DeepSeekModel = DeepSeekModelList.SelectedItem.ToString();
+            Properties.Settings.Default.TranslationDisplayMode = TranslationDisplayModeList.SelectedIndex == 1 ? "replace" : "append";
+            Properties.Settings.Default.TranslationPrompt = TranslationPromptBox.Text;
+            string bulkHotkey = (TranslationBulkHotkeyBox.Text ?? string.Empty).Trim();
+            Properties.Settings.Default.TranslationBulkHotkey = string.IsNullOrEmpty(bulkHotkey) ? "Ctrl+F9" : bulkHotkey;
+            Properties.Settings.Default.AutoTranslate = AutoTranslateCheckBox.IsChecked == true;
+            string autoHotkey = (AutoTranslateHotkeyBox.Text ?? string.Empty).Trim();
+            Properties.Settings.Default.AutoTranslateHotkey = string.IsNullOrEmpty(autoHotkey) ? "Ctrl+Shift+F9" : autoHotkey;
+            Properties.Settings.Default.SendTranslationEnabled = SendTranslationEnabled.IsChecked == true;
+            string hotkey = (SendTranslationKeyBox.Text ?? string.Empty).Trim();
+            Properties.Settings.Default.SendTranslationHotkey = string.IsNullOrEmpty(hotkey) ? "F9" : hotkey;
+            Properties.Settings.Default.SendTranslationProvider = SendProviderList.SelectedIndex == 1 ? "DeepSeek" : "Google";
+            Properties.Settings.Default.SendDeepSeekApiKey = SendApiKeyBox.Password;
+            if (SendModelList.SelectedIndex >= 0)
+                Properties.Settings.Default.SendDeepSeekModel = SendModelList.SelectedItem.ToString();
+            Properties.Settings.Default.SendTranslationPrompt = SendPromptBox.Text;
+            Properties.Settings.Default.TranslationStyle = TranslationStyleList.SelectedIndex == 1 ? "formal" : TranslationStyleList.SelectedIndex == 2 ? "literary" : "casual";
 
             StyleController.DarkMode = ToggleDarkMode.IsChecked == true;
             StyleController.Style = Themes.SelectedItem.ToString();
@@ -131,6 +183,28 @@ namespace Assistant.UI
             FollowSystemColor.IsEnabled = AppController.CanFollowSystemColor;
             FollowSystemMode.IsEnabled = AppController.CanFollowSystemMode;
             AutoParse.IsChecked = Properties.Settings.Default.AutoParse;
+            TranslationEnabled.IsChecked = Properties.Settings.Default.TranslationEnabled;
+            SelectTargetLanguage(Properties.Settings.Default.TargetLanguage);
+            SelectSendLanguage(SendSourceLanguageList, Properties.Settings.Default.SendSourceLanguage, true);
+            SelectSendLanguage(SendTargetLanguageList, Properties.Settings.Default.SendTargetLanguage, false);
+            TranslationProviderList.SelectedIndex = Properties.Settings.Default.TranslationProvider == "DeepSeek" ? 1 : 0;
+            DeepSeekApiKeyBox.Password = Properties.Settings.Default.DeepSeekApiKey;
+            SelectDeepSeekModel(Properties.Settings.Default.DeepSeekModel);
+            TranslationDisplayModeList.SelectedIndex = Properties.Settings.Default.TranslationDisplayMode == "replace" ? 1 : 0;
+            TranslationPromptBox.Text = Properties.Settings.Default.TranslationPrompt;
+            SendTranslationEnabled.IsChecked = Properties.Settings.Default.SendTranslationEnabled;
+            SendTranslationKeyBox.Text = Properties.Settings.Default.SendTranslationHotkey;
+            SendProviderList.SelectedIndex = Properties.Settings.Default.SendTranslationProvider == "DeepSeek" ? 1 : 0;
+            SendApiKeyBox.Password = Properties.Settings.Default.SendDeepSeekApiKey;
+            SelectSendModel(Properties.Settings.Default.SendDeepSeekModel);
+            SendPromptBox.Text = Properties.Settings.Default.SendTranslationPrompt;
+            TranslationStyleList.SelectedIndex = "formal".Equals(Properties.Settings.Default.TranslationStyle) ? 1 : "literary".Equals(Properties.Settings.Default.TranslationStyle) ? 2 : 0;
+            TranslationBulkHotkeyBox.Text = Properties.Settings.Default.TranslationBulkHotkey;
+            AutoTranslateCheckBox.IsChecked = Properties.Settings.Default.AutoTranslate;
+            AutoTranslateHotkeyBox.Text = Properties.Settings.Default.AutoTranslateHotkey;
+            UpdateTranslationProviderState();
+            UpdateSendTranslationState();
+            UpdateSendProviderState();
 
             ToggleDarkMode.IsChecked = StyleController.DarkMode;
             ToggleDarkMode.IsEnabled = !Properties.Settings.Default.FollowSystemMode;
@@ -169,6 +243,227 @@ namespace Assistant.UI
             LanguageList.SelectedIndex = LocalizationController.GetLanguageIndex(LocalizationController.GetLanguage());
 
             _handleLanguageChange = true;
+        }
+
+        /// <summary>
+        /// Initializes the target language ComboBox
+        /// for the in-game translation feature
+        /// </summary>
+        private void InitializeTargetLanguageSwitcher()
+        {
+            TargetLanguageList.Items.Clear();
+            foreach (KeyValuePair<string, string> pair in TranslationController.TargetLanguages)
+                TargetLanguageList.Items.Add(pair.Value);
+        }
+
+        /// <summary>
+        /// Initializes the translation provider, DeepSeek model
+        /// and translation display mode ComboBoxes
+        /// </summary>
+        private void InitializeTranslationControls()
+        {
+            TranslationProviderList.Items.Clear();
+            TranslationProviderList.Items.Add(Strings.TranslationProviderGoogle);
+            TranslationProviderList.Items.Add(Strings.TranslationProviderDeepSeek);
+
+            TranslationDisplayModeList.Items.Clear();
+            TranslationDisplayModeList.Items.Add(Strings.TranslationDisplayAppend);
+            TranslationDisplayModeList.Items.Add(Strings.TranslationDisplayReplace);
+
+            SendSourceLanguageList.Items.Clear();
+            SendSourceLanguageList.Items.Add(Strings.SourceLanguageAuto);
+            foreach (KeyValuePair<string, string> pair in TranslationController.TargetLanguages)
+                SendSourceLanguageList.Items.Add(pair.Value);
+
+            SendTargetLanguageList.Items.Clear();
+            foreach (KeyValuePair<string, string> pair in TranslationController.TargetLanguages)
+                SendTargetLanguageList.Items.Add(pair.Value);
+
+            SendProviderList.Items.Clear();
+            SendProviderList.Items.Add(Strings.TranslationProviderGoogle);
+            SendProviderList.Items.Add(Strings.TranslationProviderDeepSeek);
+
+            SendModelList.Items.Clear();
+            foreach (string model in TranslationController.DeepSeekModels)
+                SendModelList.Items.Add(model);
+
+            TranslationStyleList.Items.Clear();
+            TranslationStyleList.Items.Add(Strings.TranslationStyleCasual);
+            TranslationStyleList.Items.Add(Strings.TranslationStyleFormal);
+            TranslationStyleList.Items.Add(Strings.TranslationStyleLiterary);
+
+            DeepSeekModelList.Items.Clear();
+            foreach (string model in TranslationController.DeepSeekModels)
+                DeepSeekModelList.Items.Add(model);
+        }
+
+        /// <summary>
+        /// Selects the DeepSeek model matching the given name
+        /// </summary>
+        /// <param name="model"></param>
+        private void SelectDeepSeekModel(string model)
+        {
+            int index = -1;
+            for (int i = 0; i < TranslationController.DeepSeekModels.Length; ++i)
+            {
+                if (TranslationController.DeepSeekModels[i] == model)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            // Fall back to the first model if the saved one is no longer available
+            DeepSeekModelList.SelectedIndex = index >= 0 ? index : 0;
+        }
+
+        /// <summary>
+        /// Enables or disables the DeepSeek controls depending
+        /// on the selected translation provider
+        /// </summary>
+        private void UpdateTranslationProviderState()
+        {
+            bool deepSeek = TranslationProviderList.SelectedIndex == 1;
+            DeepSeekApiKeyLabel.IsEnabled = deepSeek;
+            DeepSeekApiKeyBox.IsEnabled = deepSeek;
+            DeepSeekModelLabel.IsEnabled = deepSeek;
+            DeepSeekModelList.IsEnabled = deepSeek;
+            TranslationPromptLabel.IsEnabled = deepSeek;
+            TranslationPromptBox.IsEnabled = deepSeek;
+        }
+
+        /// <summary>
+        /// Toggles the DeepSeek controls when the
+        /// translation provider changes
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void TranslationProviderList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            UpdateTranslationProviderState();
+        }
+
+        /// <summary>
+        /// Selects the send translation DeepSeek model matching the given name
+        /// </summary>
+        /// <param name="model"></param>
+        private void SelectSendModel(string model)
+        {
+            int index = -1;
+            for (int i = 0; i < SendModelList.Items.Count; ++i)
+            {
+                if (SendModelList.Items[i].ToString() == model)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            SendModelList.SelectedIndex = index >= 0 ? index : 0;
+        }
+
+        /// <summary>
+        /// Enables or disables the send translation DeepSeek controls
+        /// depending on the selected provider
+        /// </summary>
+        private void UpdateSendProviderState()
+        {
+            bool deepSeek = SendProviderList.SelectedIndex == 1;
+            SendApiKeyLabel.IsEnabled = deepSeek;
+            SendApiKeyBox.IsEnabled = deepSeek;
+            SendModelLabel.IsEnabled = deepSeek;
+            SendModelList.IsEnabled = deepSeek;
+            SendPromptLabel.IsEnabled = deepSeek;
+            SendPromptBox.IsEnabled = deepSeek;
+        }
+
+        /// <summary>
+        /// Toggles the send translation DeepSeek controls when
+        /// the send provider changes
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void SendProviderList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            UpdateSendProviderState();
+        }
+
+        /// <summary>
+        /// Selects the target language matching the given code
+        /// </summary>
+        /// <param name="code"></param>
+        private void SelectTargetLanguage(string code)
+        {
+            for (int i = 0; i < TranslationController.TargetLanguages.Length; ++i)
+            {
+                if (TranslationController.TargetLanguages[i].Key == code)
+                {
+                    TargetLanguageList.SelectedIndex = i;
+                    return;
+                }
+            }
+            TargetLanguageList.SelectedIndex = 0;
+        }
+
+        /// <summary>
+        /// Selects a language in one of the send translation ComboBoxes.
+        /// When withAuto is true the first entry is "auto-detect".
+        /// </summary>
+        private static void SelectSendLanguage(System.Windows.Controls.ComboBox list, string code, bool withAuto)
+        {
+            if (withAuto && code == "auto")
+            {
+                list.SelectedIndex = 0;
+                return;
+            }
+
+            for (int i = 0; i < TranslationController.TargetLanguages.Length; ++i)
+            {
+                if (TranslationController.TargetLanguages[i].Key == code)
+                {
+                    list.SelectedIndex = withAuto ? i + 1 : i;
+                    return;
+                }
+            }
+            list.SelectedIndex = 0;
+        }
+
+        /// <summary>
+        /// Enables or disables the send translation controls depending on
+        /// whether the feature is enabled
+        /// </summary>
+        private void UpdateSendTranslationState()
+        {
+            bool enabled = SendTranslationEnabled.IsChecked == true;
+            SendSourceLanguageLabel.IsEnabled = enabled;
+            SendSourceLanguageList.IsEnabled = enabled;
+            SendTargetLanguageLabel.IsEnabled = enabled;
+            SendTargetLanguageList.IsEnabled = enabled;
+            SendTranslationKeyLabel.IsEnabled = enabled;
+            SendTranslationKeyBox.IsEnabled = enabled;
+            SendProviderLabel.IsEnabled = enabled;
+            SendProviderList.IsEnabled = enabled;
+            if (!enabled)
+            {
+                SendApiKeyLabel.IsEnabled = false;
+                SendApiKeyBox.IsEnabled = false;
+                SendModelLabel.IsEnabled = false;
+                SendModelList.IsEnabled = false;
+                SendPromptLabel.IsEnabled = false;
+                SendPromptBox.IsEnabled = false;
+            }
+            else
+            {
+                UpdateSendProviderState();
+            }
+        }
+
+        /// <summary>
+        /// Toggles the hotkey box when the send translation feature changes
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void SendTranslationEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            UpdateSendTranslationState();
         }
 
         /// <summary>
@@ -222,6 +517,27 @@ namespace Assistant.UI
             Properties.Settings.Default.FollowSystemColor = AppController.CanFollowSystemColor;
             Properties.Settings.Default.FollowSystemMode = AppController.CanFollowSystemMode;
             Properties.Settings.Default.AutoParse = false;
+            Properties.Settings.Default.TranslationEnabled = false;
+            Properties.Settings.Default.TargetLanguage = "zh-CN";
+            Properties.Settings.Default.SendSourceLanguage = "zh-CN";
+            Properties.Settings.Default.SendTargetLanguage = "en";
+            Properties.Settings.Default.TranslationProvider = "Google";
+            Properties.Settings.Default.DeepSeekApiKey = string.Empty;
+            Properties.Settings.Default.DeepSeekModel = "deepseek-v4-flash";
+            Properties.Settings.Default.TranslationDisplayMode = "append";
+            Properties.Settings.Default.TranslationPrompt = string.Empty;
+            Properties.Settings.Default.SendTranslationEnabled = false;
+            Properties.Settings.Default.SendTranslationHotkey = "F9";
+            Properties.Settings.Default.SendTranslationProvider = "Google";
+            Properties.Settings.Default.SendDeepSeekApiKey = string.Empty;
+            Properties.Settings.Default.SendDeepSeekModel = "deepseek-v4-flash";
+            Properties.Settings.Default.SendTranslationPrompt = string.Empty;
+            Properties.Settings.Default.TranslationStyle = "casual";
+            Properties.Settings.Default.TranslationBulkHotkey = "Ctrl+F9";
+            Properties.Settings.Default.AutoTranslate = false;
+            Properties.Settings.Default.AutoTranslateHotkey = "Ctrl+Shift+F9";
+            Properties.Settings.Default.TranslatorWindowLeft = -1;
+            Properties.Settings.Default.TranslatorWindowTop = -1;
 
             StyleController.DarkMode = AppController.CanFollowSystemMode && StyleController.GetAppMode();
             StyleController.Style = AppController.CanFollowSystemColor ? "Windows" : "Default";

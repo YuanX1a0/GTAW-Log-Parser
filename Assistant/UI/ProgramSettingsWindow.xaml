@@ -13,7 +13,7 @@
                       WindowTransitionsEnabled="True"
                       BorderThickness="0" 
                       GlowBrush="Black"
-                      Title="Program Settings" Height="368" Width="520" ShowInTaskbar="True" IsMaxRestoreButtonEnabled="False" IsMinButtonEnabled="False" TitleCaps="False" ShowIconOnTitleBar="False" Icon="../Resources/AppIcon.ico">
+                      Title="Program Settings" Height="480" Width="560" ShowInTaskbar="True" IsMaxRestoreButtonEnabled="False" IsMinButtonEnabled="False" TitleCaps="False" ShowIconOnTitleBar="False" Icon="../Resources/AppIcon.ico">
 
     <Controls:MetroWindow.WindowButtonCommands>
         <Controls:WindowButtonCommands 
@@ -22,32 +22,188 @@
     </Controls:MetroWindow.WindowButtonCommands>
 
     <Grid>
-        <Label x:Name="SectionTitleBarLabel" Content="Title Bar" HorizontalAlignment="Left" Margin="4,10,0,0" VerticalAlignment="Top" FontSize="14"/>
-        <Label Content="|" HorizontalAlignment="Left" Margin="195,-40,0,0" VerticalAlignment="Top" FontSize="160" Width="25"/>
-        <Label x:Name="SectionOtherLabel" Content="Other" HorizontalAlignment="Left" Margin="229,10,0,0" VerticalAlignment="Top" FontSize="14"/>
-        <Label x:Name="SectionThemeLabel" Content="Theme" HorizontalAlignment="Left" Margin="4,176,0,0" VerticalAlignment="Top" FontSize="14"/>
+        <TabControl x:Name="SettingsTabs" Margin="10,10,10,55">
+            <TabItem x:Name="TabTitleBar" Header="Title Bar">
+                <StackPanel Margin="10">
+                    <CheckBox x:Name="DisableForumsButton" Checked="DisableForumsButton_CheckedChanged" Unchecked="DisableForumsButton_CheckedChanged" Margin="0,6,0,0"/>
+                    <CheckBox x:Name="DisableFacebrowserButton" Checked="DisableFacebrowserButton_CheckedChanged" Unchecked="DisableFacebrowserButton_CheckedChanged" Margin="0,6,0,0"/>
+                    <CheckBox x:Name="DisableUCPButton" Checked="DisableUCPButton_CheckedChanged" Unchecked="DisableUCPButton_CheckedChanged" Margin="0,6,0,0"/>
+                    <CheckBox x:Name="DisableReleasesButton" Checked="DisableReleasesButton_CheckedChanged" Unchecked="DisableReleasesButton_CheckedChanged" Margin="0,6,0,0"/>
+                    <CheckBox x:Name="DisableProjectButton" Checked="DisableProjectButton_CheckedChanged" Unchecked="DisableProjectButton_CheckedChanged" Margin="0,6,0,0"/>
+                </StackPanel>
+            </TabItem>
+            <TabItem x:Name="TabOther" Header="Other">
+                <StackPanel Margin="10">
+                    <CheckBox x:Name="DisableInformationPopups" Margin="0,6,0,0"/>
+                    <CheckBox x:Name="DisableWarningPopups" Margin="0,6,0,0"/>
+                    <CheckBox x:Name="DisableErrorPopups" Margin="0,6,0,0"/>
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TimeoutLabel1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <xctk:IntegerUpDown x:Name="Timeout" Grid.Column="1" ValueChanged="Timeout_ValueChanged" TextAlignment="Center" Maximum="60" Minimum="1" Value="4" Text="4" Height="26" VerticalAlignment="Center" Width="45"/>
+                        <Label x:Name="TimeoutLabel2" Grid.Column="2" Content="seconds." VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    </Grid>
+                    <CheckBox x:Name="IgnoreBetaVersions" Margin="0,6,0,0"/>
+                    <CheckBox x:Name="AutoParse" Margin="0,6,0,0"/>
+                </StackPanel>
+            </TabItem>
+            <TabItem x:Name="TabTheme" Header="Theme">
+                <StackPanel Margin="10">
+                    <CheckBox x:Name="FollowSystemColor" IsEnabled="False" Checked="FollowSystemColor_CheckedChanged" Unchecked="FollowSystemColor_CheckedChanged" Margin="0,6,0,0"/>
+                    <CheckBox x:Name="FollowSystemMode" IsEnabled="False" Checked="FollowSystemMode_CheckedChanged" Unchecked="FollowSystemMode_CheckedChanged" Margin="0,6,0,0"/>
+                    <ComboBox x:Name="Themes" IsEnabled="False" SelectionChanged="Themes_SelectionChanged" Margin="0,12,0,0" Width="220" HorizontalAlignment="Left"/>
+                    <CheckBox x:Name="ToggleDarkMode" IsEnabled="False" Checked="ToggleDarkMode_CheckedChanged" Unchecked="ToggleDarkMode_CheckedChanged" Margin="0,6,0,0"/>
+                </StackPanel>
+            </TabItem>
+            <TabItem x:Name="TabLanguage" Header="Language">
+                <StackPanel Margin="10">
+                    <ComboBox x:Name="LanguageList" SelectionChanged="LanguageList_SelectionChanged" Margin="0,6,0,0" Width="240" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </TabItem>
+            <TabItem x:Name="TabTranslation" Header="Translation">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="10">
+                    <CheckBox x:Name="TranslationEnabled" Margin="0,6,0,0"/>
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TargetLanguageLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="TargetLanguageList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationBulkHotkeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TranslationBulkHotkeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <CheckBox x:Name="AutoTranslateCheckBox" Margin="0,6,0,0"/>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="AutoTranslateHotkeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="AutoTranslateHotkeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationProviderLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="TranslationProviderList" Grid.Column="1" SelectionChanged="TranslationProviderList_SelectionChanged" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DeepSeekApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="DeepSeekApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DeepSeekModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="DeepSeekModelList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationDisplayModeLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="TranslationDisplayModeList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationPromptLabel" Grid.Column="0" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                        <TextBox x:Name="TranslationPromptBox" Grid.Column="1" Height="64" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalAlignment="Top"/>
+                    </Grid>
+                    <CheckBox x:Name="SendTranslationEnabled" Margin="0,10,0,0" Checked="SendTranslationEnabled_Changed" Unchecked="SendTranslationEnabled_Changed"/>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendSourceLanguageLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendSourceLanguageList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendTargetLanguageLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendTargetLanguageList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendTranslationKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="SendTranslationKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendProviderLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendProviderList" Grid.Column="1" SelectionChanged="SendProviderList_SelectionChanged" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="SendApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendModelList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendPromptLabel" Grid.Column="0" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                        <TextBox x:Name="SendPromptBox" Grid.Column="1" Height="64" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalAlignment="Top"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationStyleLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="TranslationStyleList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
 
-        <CheckBox x:Name="DisableForumsButton" Checked="DisableForumsButton_CheckedChanged" Unchecked="DisableForumsButton_CheckedChanged" Content="Disable the forums icon" HorizontalAlignment="Left" Margin="10,38,0,0" VerticalAlignment="Top" Width="193"/>
-        <CheckBox x:Name="DisableFacebrowserButton" Checked="DisableFacebrowserButton_CheckedChanged" Unchecked="DisableFacebrowserButton_CheckedChanged" Content="Disable the Facebrowser icon" HorizontalAlignment="Left" Margin="10,61,0,0" VerticalAlignment="Top" Width="193"/>
-        <CheckBox x:Name="DisableUCPButton" Checked="DisableUCPButton_CheckedChanged" Unchecked="DisableUCPButton_CheckedChanged" Content="Disable the UCP icon" HorizontalAlignment="Left" Margin="10,84,0,0" VerticalAlignment="Top" Width="193"/>
-        <CheckBox x:Name="DisableReleasesButton" Checked="DisableReleasesButton_CheckedChanged" Unchecked="DisableReleasesButton_CheckedChanged" Content="Disable the releases page icon" HorizontalAlignment="Left" Margin="10,107,0,0" VerticalAlignment="Top" Width="193"/>
-        <CheckBox x:Name="DisableProjectButton" Checked="DisableProjectButton_CheckedChanged" Unchecked="DisableProjectButton_CheckedChanged" Content="Disable the project page icon" HorizontalAlignment="Left" Margin="10,130,0,0" VerticalAlignment="Top" Width="193"/>
-        <CheckBox x:Name="DisableInformationPopups" Content="Disable most Information popups" HorizontalAlignment="Left" Margin="235,38,0,0" VerticalAlignment="Top" Width="281"/>
-        <CheckBox x:Name="DisableWarningPopups" Content="Disable most Warning popups" HorizontalAlignment="Left" Margin="235,61,0,0" VerticalAlignment="Top" Width="281"/>
-        <CheckBox x:Name="DisableErrorPopups" Content="Disable most Error popups" HorizontalAlignment="Left" Margin="235,84,0,0" VerticalAlignment="Top" Width="281"/>
-        <Label x:Name="TimeoutLabel1" Content="Abort checking for updates after " HorizontalAlignment="Left" Margin="230,107,0,0" VerticalAlignment="Top" Width="195"/>
-        <xctk:IntegerUpDown ValueChanged="Timeout_ValueChanged" TextAlignment="Center" x:Name="Timeout" Margin="413,108,0,0" Maximum="60" Minimum="1" Value="4" Text="4" Height="26" VerticalAlignment="Top" HorizontalAlignment="Left" Width="45" />
-        <Label x:Name="TimeoutLabel2" Content="seconds." HorizontalAlignment="Left" Margin="459,107,0,0" VerticalAlignment="Top" Width="57"/>
-        <CheckBox x:Name="IgnoreBetaVersions" Content="Ignore beta versions in the update check" HorizontalAlignment="Left" Margin="235,138,-2,0" VerticalAlignment="Top" Width="281"/>
-        <CheckBox x:Name="FollowSystemColor" IsEnabled="False" Checked="FollowSystemColor_CheckedChanged" Unchecked="FollowSystemColor_CheckedChanged" Content="Use system accent color (Windows 10)" HorizontalAlignment="Left" Margin="235,161,-2,0" VerticalAlignment="Top" Width="281"/>
-        <CheckBox x:Name="FollowSystemMode" IsEnabled="False" Checked="FollowSystemMode_CheckedChanged" Unchecked="FollowSystemMode_CheckedChanged" Content="Follow system app mode (Windows 10)" HorizontalAlignment="Left" Margin="235,184,-2,0" VerticalAlignment="Top" Width="281"/>
-        <ComboBox x:Name="Themes" IsEnabled="False" SelectionChanged="Themes_SelectionChanged" HorizontalAlignment="Left" Margin="10,205,0,0" VerticalAlignment="Top" Width="193"/>
-        <CheckBox x:Name="ToggleDarkMode" IsEnabled="False" Checked="ToggleDarkMode_CheckedChanged" Unchecked="ToggleDarkMode_CheckedChanged" Content="Dark Mode" HorizontalAlignment="Left" Margin="10,239,0,0" VerticalAlignment="Top" Width="193"/>
-        <CheckBox x:Name="AutoParse" Content="Automatically parse the chat log in real time" HorizontalAlignment="Left" Margin="235,207,0,0" VerticalAlignment="Top" Width="281"/>
-        <Label x:Name="SectionLanguageLabel" Content="Language" HorizontalAlignment="Left" Margin="4,262,0,0" VerticalAlignment="Top" FontSize="14"/>
-        <ComboBox x:Name="LanguageList" SelectionChanged="LanguageList_SelectionChanged" HorizontalAlignment="Left" Margin="10,291,0,0" VerticalAlignment="Top" Width="193"/>
-
-        <Button x:Name="CloseWindow" Click="CloseWindow_Click" Content="Close" HorizontalAlignment="Left" Margin="430,287,0,0" VerticalAlignment="Top" Width="75"/>
-        <Button x:Name="Reset" Click="Reset_Click" Content="Reset" HorizontalAlignment="Left" Margin="350,287,0,0" VerticalAlignment="Top" Width="75"/>
+        <Button x:Name="Reset" Click="Reset_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,95,15" Width="75" Height="28"/>
+        <Button x:Name="CloseWindow" Click="CloseWindow_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,15,15" Width="75" Height="28"/>
     </Grid>
 </Controls:MetroWindow>

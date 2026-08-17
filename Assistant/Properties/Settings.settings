@@ -128,5 +128,68 @@
     <Setting Name="AutoParse" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="TranslationEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="TargetLanguage" Type="System.String" Scope="User">
+      <Value Profile="(Default)">zh-CN</Value>
+    </Setting>
+    <Setting Name="SendSourceLanguage" Type="System.String" Scope="User">
+      <Value Profile="(Default)">zh-CN</Value>
+    </Setting>
+    <Setting Name="SendTargetLanguage" Type="System.String" Scope="User">
+      <Value Profile="(Default)">en</Value>
+    </Setting>
+    <Setting Name="TranslationProvider" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Google</Value>
+    </Setting>
+    <Setting Name="DeepSeekApiKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="DeepSeekModel" Type="System.String" Scope="User">
+      <Value Profile="(Default)">deepseek-v4-flash</Value>
+    </Setting>
+    <Setting Name="TranslationDisplayMode" Type="System.String" Scope="User">
+      <Value Profile="(Default)">append</Value>
+    </Setting>
+    <Setting Name="TranslationPrompt" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="SendTranslationEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="SendTranslationHotkey" Type="System.String" Scope="User">
+      <Value Profile="(Default)">F9</Value>
+    </Setting>
+    <Setting Name="SendTranslationProvider" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Google</Value>
+    </Setting>
+    <Setting Name="SendDeepSeekApiKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="SendDeepSeekModel" Type="System.String" Scope="User">
+      <Value Profile="(Default)">deepseek-v4-flash</Value>
+    </Setting>
+    <Setting Name="SendTranslationPrompt" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TranslationStyle" Type="System.String" Scope="User">
+      <Value Profile="(Default)">casual</Value>
+    </Setting>
+    <Setting Name="TranslationBulkHotkey" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Ctrl+F9</Value>
+    </Setting>
+    <Setting Name="AutoTranslate" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="AutoTranslateHotkey" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Ctrl+Shift+F9</Value>
+    </Setting>
+    <Setting Name="TranslatorWindowLeft" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
+    <Setting Name="TranslatorWindowTop" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">-1</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

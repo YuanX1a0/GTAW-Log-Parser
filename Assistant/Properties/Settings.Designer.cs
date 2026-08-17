@@ -523,5 +523,257 @@ namespace Assistant.Properties {
                 this["AutoParse"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TranslationEnabled {
+            get {
+                return ((bool)(this["TranslationEnabled"]));
+            }
+            set {
+                this["TranslationEnabled"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("zh-CN")]
+        public string TargetLanguage {
+            get {
+                return ((string)(this["TargetLanguage"]));
+            }
+            set {
+                this["TargetLanguage"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("zh-CN")]
+        public string SendSourceLanguage {
+            get {
+                return ((string)(this["SendSourceLanguage"]));
+            }
+            set {
+                this["SendSourceLanguage"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("en")]
+        public string SendTargetLanguage {
+            get {
+                return ((string)(this["SendTargetLanguage"]));
+            }
+            set {
+                this["SendTargetLanguage"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Google")]
+        public string TranslationProvider {
+            get {
+                return ((string)(this["TranslationProvider"]));
+            }
+            set {
+                this["TranslationProvider"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string DeepSeekApiKey {
+            get {
+                return ((string)(this["DeepSeekApiKey"]));
+            }
+            set {
+                this["DeepSeekApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("deepseek-v4-flash")]
+        public string DeepSeekModel {
+            get {
+                return ((string)(this["DeepSeekModel"]));
+            }
+            set {
+                this["DeepSeekModel"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("append")]
+        public string TranslationDisplayMode {
+            get {
+                return ((string)(this["TranslationDisplayMode"]));
+            }
+            set {
+                this["TranslationDisplayMode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TranslationPrompt {
+            get {
+                return ((string)(this["TranslationPrompt"]));
+            }
+            set {
+                this["TranslationPrompt"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool SendTranslationEnabled {
+            get {
+                return ((bool)(this["SendTranslationEnabled"]));
+            }
+            set {
+                this["SendTranslationEnabled"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("F9")]
+        public string SendTranslationHotkey {
+            get {
+                return ((string)(this["SendTranslationHotkey"]));
+            }
+            set {
+                this["SendTranslationHotkey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Google")]
+        public string SendTranslationProvider {
+            get {
+                return ((string)(this["SendTranslationProvider"]));
+            }
+            set {
+                this["SendTranslationProvider"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendDeepSeekApiKey {
+            get {
+                return ((string)(this["SendDeepSeekApiKey"]));
+            }
+            set {
+                this["SendDeepSeekApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("deepseek-v4-flash")]
+        public string SendDeepSeekModel {
+            get {
+                return ((string)(this["SendDeepSeekModel"]));
+            }
+            set {
+                this["SendDeepSeekModel"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendTranslationPrompt {
+            get {
+                return ((string)(this["SendTranslationPrompt"]));
+            }
+            set {
+                this["SendTranslationPrompt"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("casual")]
+        public string TranslationStyle {
+            get {
+                return ((string)(this["TranslationStyle"]));
+            }
+            set {
+                this["TranslationStyle"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Ctrl+F9")]
+        public string TranslationBulkHotkey {
+            get {
+                return ((string)(this["TranslationBulkHotkey"]));
+            }
+            set {
+                this["TranslationBulkHotkey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool AutoTranslate {
+            get {
+                return ((bool)(this["AutoTranslate"]));
+            }
+            set {
+                this["AutoTranslate"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Ctrl+Shift+F9")]
+        public string AutoTranslateHotkey {
+            get {
+                return ((string)(this["AutoTranslateHotkey"]));
+            }
+            set {
+                this["AutoTranslateHotkey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public int TranslatorWindowLeft {
+            get {
+                return ((int)(this["TranslatorWindowLeft"]));
+            }
+            set {
+                this["TranslatorWindowLeft"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public int TranslatorWindowTop {
+            get {
+                return ((int)(this["TranslatorWindowTop"]));
+            }
+            set {
+                this["TranslatorWindowTop"] = value;
+            }
+        }
     }
 }
