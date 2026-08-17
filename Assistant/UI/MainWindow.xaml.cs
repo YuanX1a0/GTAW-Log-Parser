@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Octokit;
 using System.IO;
 using System.Windows;
@@ -91,6 +91,21 @@ namespace Assistant.UI
                 if (currentLanguage == language.ToString())
                     menuItem.IsChecked = true;
             }
+        }
+
+        /// <summary>
+        /// Restarts the application
+        /// </summary>
+        public void RestartApplication()
+        {
+            isRestarting = true;
+
+            ProcessStartInfo startInfo = Process.GetCurrentProcess().StartInfo;
+            startInfo.FileName = AppController.ExecutablePath;
+            startInfo.Arguments = $"{AppController.ParameterPrefix}restart";
+            Process.Start(startInfo);
+
+            System.Windows.Application.Current.Shutdown();
         }
 
         /// <summary>

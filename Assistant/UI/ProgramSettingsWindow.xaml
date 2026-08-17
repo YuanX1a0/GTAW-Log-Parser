@@ -13,7 +13,7 @@
                       WindowTransitionsEnabled="True"
                       BorderThickness="0" 
                       GlowBrush="Black"
-                      Title="Program Settings" Height="308" Width="520" ShowInTaskbar="True" IsMaxRestoreButtonEnabled="False" IsMinButtonEnabled="False" TitleCaps="False" ShowIconOnTitleBar="False" Icon="../Resources/AppIcon.ico">
+                      Title="Program Settings" Height="368" Width="520" ShowInTaskbar="True" IsMaxRestoreButtonEnabled="False" IsMinButtonEnabled="False" TitleCaps="False" ShowIconOnTitleBar="False" Icon="../Resources/AppIcon.ico">
 
     <Controls:MetroWindow.WindowButtonCommands>
         <Controls:WindowButtonCommands 
@@ -43,8 +43,10 @@
         <CheckBox x:Name="FollowSystemMode" IsEnabled="False" Checked="FollowSystemMode_CheckedChanged" Unchecked="FollowSystemMode_CheckedChanged" Content="Follow system app mode (Windows 10)" HorizontalAlignment="Left" Margin="235,184,-2,0" VerticalAlignment="Top" Width="281"/>
         <ComboBox x:Name="Themes" IsEnabled="False" SelectionChanged="Themes_SelectionChanged" HorizontalAlignment="Left" Margin="10,205,0,0" VerticalAlignment="Top" Width="193"/>
         <CheckBox x:Name="ToggleDarkMode" IsEnabled="False" Checked="ToggleDarkMode_CheckedChanged" Unchecked="ToggleDarkMode_CheckedChanged" Content="Dark Mode" HorizontalAlignment="Left" Margin="10,239,0,0" VerticalAlignment="Top" Width="193"/>
+        <Label Content="Language" HorizontalAlignment="Left" Margin="4,262,0,0" VerticalAlignment="Top" FontSize="14"/>
+        <ComboBox x:Name="LanguageList" SelectionChanged="LanguageList_SelectionChanged" HorizontalAlignment="Left" Margin="10,291,0,0" VerticalAlignment="Top" Width="193"/>
 
-        <Button x:Name="CloseWindow" Click="CloseWindow_Click" Content="Close" HorizontalAlignment="Left" Margin="430,235,0,0" VerticalAlignment="Top" Width="75"/>
-        <Button x:Name="Reset" Click="Reset_Click" Content="Reset" HorizontalAlignment="Left" Margin="350,235,0,0" VerticalAlignment="Top" Width="75"/>
+        <Button x:Name="CloseWindow" Click="CloseWindow_Click" Content="Close" HorizontalAlignment="Left" Margin="430,287,0,0" VerticalAlignment="Top" Width="75"/>
+        <Button x:Name="Reset" Click="Reset_Click" Content="Reset" HorizontalAlignment="Left" Margin="350,287,0,0" VerticalAlignment="Top" Width="75"/>
     </Grid>
 </Controls:MetroWindow>

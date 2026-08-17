@@ -1,4 +1,7 @@
-﻿using System.Windows;
+using System;
+using System.Diagnostics;
+using System.Globalization;
+using System.Windows;
 using System.Windows.Input;
 using Assistant.Controllers;
 using Assistant.Localization;
@@ -11,6 +14,7 @@ namespace Assistant.UI
     public partial class ProgramSettingsWindow
     {
         private readonly MainWindow _mainWindow;
+        private bool _handleLanguageChange;
 
         /// <summary>
         /// Focuses back on this window if
@@ -39,6 +43,7 @@ namespace Assistant.UI
 
             CloseWindow.Focus();
             StyleController.ValidStyles.Remove("Windows");
+            InitializeLanguageSwitcher();
             LoadSettings();
         }
 
@@ -108,6 +113,60 @@ namespace Assistant.UI
                 Themes.Items.Add(style);
             }
             Themes.SelectedItem = StyleController.Style;
+        }
+
+        /// <summary>
+        /// Initializes the Language picker ComboBox
+        /// with all available languages and
+        /// selects the currently used one
+        /// </summary>
+        private void InitializeLanguageSwitcher()
+        {
+            _handleLanguageChange = false;
+
+            LanguageList.Items.Clear();
+            foreach (LocalizationController.Language language in (LocalizationController.Language[])Enum.GetValues(typeof(LocalizationController.Language)))
+                LanguageList.Items.Add(language.ToString());
+
+            string currentLanguage = LocalizationController.GetLanguageFromCode(LocalizationController.GetLanguage());
+            int index = LanguageList.Items.IndexOf(currentLanguage);
+            LanguageList.SelectedIndex = index >= 0 ? index : 0;
+
+            _handleLanguageChange = true;
+        }
+
+        /// <summary>
+        /// Asks the user to restart the application
+        /// after changing the language and applies
+        /// the change if confirmed
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void LanguageList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!_handleLanguageChange || LanguageList.SelectedItem == null)
+                return;
+
+            LocalizationController.Language selectedLanguage;
+            if (!Enum.TryParse(LanguageList.SelectedItem.ToString(), out selectedLanguage))
+                return;
+
+            // Ignore the event if the language did not actually change
+            if (LocalizationController.GetLanguage() == LocalizationController.GetCodeFromLanguage(selectedLanguage))
+                return;
+
+            CultureInfo cultureInfo = new CultureInfo(LocalizationController.GetCodeFromLanguage(selectedLanguage));
+            if (MessageBox.Show(Strings.ResourceManager.GetString("SwitchServer", cultureInfo),
+                Strings.ResourceManager.GetString("Restart", cultureInfo), MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes)
+            {
+                // Revert the ComboBox to the current language
+                InitializeLanguageSwitcher();
+                return;
+            }
+
+            LocalizationController.SetLanguage(selectedLanguage);
+            _mainWindow.RestartApplication();
         }
 
         /// <summary>
