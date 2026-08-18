@@ -38,6 +38,7 @@ namespace Assistant.UI
             ApplyLocalization();
             InitializeTrayIcon();
             TranslationController.LogEvent("app", "程序启动");
+            AboutVersion.Text = "版本：" + AppController.Version + (AppController.IsBetaVersion ? "（测试版）" : string.Empty);
 
             if (startMinimized)
                 _trayIcon.Visible = true;
@@ -62,16 +63,19 @@ namespace Assistant.UI
             bool overview = page == "overview";
             bool chat = page == "chatlog";
             bool realtime = page == "realtimelog";
+            bool about = page == "about";
 
             OverviewPage.Visibility = overview ? Visibility.Visible : Visibility.Collapsed;
             ChatLogPage.Visibility = chat ? Visibility.Visible : Visibility.Collapsed;
-            TranslationPage.Visibility = (overview || chat || realtime) ? Visibility.Collapsed : Visibility.Visible;
+            TranslationPage.Visibility = (overview || chat || realtime || about) ? Visibility.Collapsed : Visibility.Visible;
             RealtimeLogPage.Visibility = realtime ? Visibility.Visible : Visibility.Collapsed;
+            AboutPage.Visibility = about ? Visibility.Visible : Visibility.Collapsed;
 
             SetNavButton(NavOverview, NavOverviewText, overview);
             SetNavButton(NavChatLog, NavChatLogText, chat);
-            SetNavButton(NavTranslation, NavTranslationText, !overview && !chat && !realtime);
+            SetNavButton(NavTranslation, NavTranslationText, !overview && !chat && !realtime && !about);
             SetNavButton(NavRealtimeLog, NavRealtimeLogText, realtime);
+            SetNavButton(NavAbout, NavAboutText, about);
 
             if (overview)
                 RefreshOverviewStats();
@@ -198,7 +202,7 @@ namespace Assistant.UI
 
         private void NavAbout_Click(object sender, RoutedEventArgs e)
         {
-            ShowAbout();
+            ShowPage("about");
         }
 
         // ================================================================
@@ -1054,15 +1058,18 @@ namespace Assistant.UI
         }
 
         /// <summary>
-        /// Displays some information about the application
+        /// Opens the project homepage in the default browser.
         /// </summary>
-        private void ShowAbout()
+        private void ProjectLink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
         {
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            // ReSharper disable once UnreachableCode
-#pragma warning disable 162
-            MessageBox.Show(string.Format(Strings.About, AppController.Version, AppController.IsBetaVersion ? Strings.Beta : string.Empty, AppController.ResourceDirectory), Strings.Information, MessageBoxButton.OK, MessageBoxImage.Information);
-#pragma warning restore 162
+            try
+            {
+                Process.Start(e.Uri.ToString());
+            }
+            catch
+            {
+                // Browser could not be started; ignore.
+            }
         }
 
         // ================================================================

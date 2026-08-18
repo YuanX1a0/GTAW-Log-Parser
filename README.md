@@ -1,31 +1,42 @@
-# GTA World Chat Log Assistant - FiveM Adaptation
+# GTA World Chat Assistant
 
-This independent working copy captures the GTA World chat displayed by FiveM's local NUI and keeps the parser's automatic backup and filtering workflow.
+A translation assistant for GTA World roleplay (FiveM). It captures the in-game chat, translates it in real time, and lets you review and send your own translated messages — all inside the game.
 
-It captures the GTA World chat displayed by FiveM's local NUI while preserving the parser's backup and filtering workflow.
+## Features
 
-![](header.png)
+- **Real-time chat translation** — every in-game chat message is captured and translated automatically as it appears.
+- **Translator window** — press the hotkey while typing to open an in-game overlay showing your original text and its translation side by side. Edit the translation, then send it to the game or apply it to the chat input.
+- **Auto-translate hotkey** — toggle automatic translation of incoming chat messages with a single key.
+- **Multiple translation providers** — Google, DeepSeek, DeepL, Doubao (Volcano Ark) and Zoom. Configure provider, API key, model, target and source languages in the settings page; changes take effect immediately.
+- **Translation cache** — previously translated text is cached, so repeated messages resolve instantly and save API calls.
+- **Statistics** — total translations, characters and an English word-frequency ranking (common words are filtered out) shown on the overview page.
+- **Realtime log page** — a live view of application / game / hotkey / translation events and errors for troubleshooting.
+- **Chat log backup & filtering** — the classic GTA World chat log backup and filtering workflow is preserved.
+- **Localized UI** — Simplified Chinese, Traditional Chinese, English and Spanish.
+- **Windows notifications** — hotkey presses are reported as Windows toasts.
 
-## Getting Started
+## Download
 
-No installation is required. Simply download the latest [release](https://github.com/AdvGTAW/GTAW-Log-Parser/releases) and run the executable.
+No installation is required. Download the latest executable from the [releases page](https://github.com/YuanX1a0/GTAW-Log-Parser/releases) and run it.
+
+## Usage
+
+1. Start FiveM, join a GTA World server, then start the assistant.
+2. In the **翻译 / Translation** page, pick a translation provider and enter your API key (Google needs no key).
+3. Toggle chat translation or the translator window from the assistant, or use the in-game hotkey (default `Numpad` / configurable).
+4. Everything else (statistics, realtime log, chat log backup/filtering) lives in the left-hand menu.
 
 ## Building
 
-The NuGet package dependencies must be restored before compiling the project.
+- .NET Framework 4.8.1, WPF (MahApps.Metro).
+- Restore NuGet packages before compiling, e.g. `msbuild Assistant/Assistant.csproj /t:Restore`.
 
-## Contributing
+## Project
 
-1. Fork Project (<https://github.com/your_name/GTAW-Log-Parser>)
-2. Create Branch (`git checkout -b branch_name`)
-3. Commit (`git commit -am "Add feature_name"`)
-4. Push (`git push origin branch_name`)
-5. Create Pull Request
+- Developer: **YuanX1a0**
+- Repository: <https://github.com/YuanX1a0/GTAW-Log-Parser>
+- Branches: `master` (stable) · `beta` (in-development)
 
-## Roadmap
+## License
 
-- Switch to .NET Core 3.1, then .NET 5 (when available)
-
-## Additional Information
-
-Distributed under the GPLv3 license. See ``LICENSE`` for more information.
+Distributed under the GPLv3 license. See `LICENSE` for more information.
