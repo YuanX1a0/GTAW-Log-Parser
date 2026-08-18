@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Resources;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("GTAWAssistant")]
+[assembly: AssemblyTitle("GTA World Chat Assistant")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("GTAWAssistant")]
+[assembly: AssemblyProduct("GTA World Chat Assistant")]
 [assembly: AssemblyCopyright("Copyright ©  2020")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

@@ -67,6 +67,7 @@ namespace Assistant.Controllers
                                 Properties.Settings.Default.ShowGameToasts);
                             hookInstalled = true;
                             ProcessTranslator();
+                            ProcessHotkeyToasts();
                         }
                     }
                     else if (hookInstalled)
@@ -90,6 +91,43 @@ namespace Assistant.Controllers
         private static string lastInputText;
         private static string lastTranslated;
         private static DateTime lastRetranslate = DateTime.UtcNow;
+
+        /// <summary>
+        /// Reports the translator hotkey toggle as a Windows toast. The send
+        /// hook lives in this worker's own NUI context, so it polls the flag
+        /// directly instead of relying on the chat-log capture loop.
+        /// </summary>
+        private static void ProcessHotkeyToasts()
+        {
+            try
+            {
+                string flag = Reader.ReadHotkeyToastFlag(true);
+                if (string.IsNullOrEmpty(flag))
+                    return;
+                TranslationController.LogEvent("热键", flag);
+                string text = null;
+                switch (flag)
+                {
+                    case "send:on":
+                        text = Strings.ToastPrefix + Strings.ToastTranslatorOn;
+                        break;
+                    case "send:off":
+                        text = Strings.ToastPrefix + Strings.ToastTranslatorOff;
+                        break;
+                }
+                if (text == null)
+                    return;
+                Assistant.UI.MainWindow window = System.Windows.Application.Current != null
+                    ? System.Windows.Application.Current.MainWindow as Assistant.UI.MainWindow
+                    : null;
+                if (window != null)
+                    window.ShowWindowsToast(text);
+            }
+            catch
+            {
+                // NUI may be reloading; the flag will be read on the next poll
+            }
+        }
 
         /// <summary>
         /// Keeps the persistent in-game translator window in sync with the chat
@@ -122,6 +160,7 @@ namespace Assistant.Controllers
                 string message = result.ContainsKey("text") ? result["text"] as string : null;
                 if (action == "send" && !string.IsNullOrWhiteSpace(message))
                 {
+                    TranslationController.LogEvent("翻译器", "发送翻译到游戏: " + TranslationController.Short(message));
                     Reader.SendChatMessage(message);
                     Reader.ClearSendOverlay();
                     lastInputText = null;
@@ -129,10 +168,12 @@ namespace Assistant.Controllers
                 }
                 else if (action == "apply" && !string.IsNullOrWhiteSpace(message))
                 {
+                    TranslationController.LogEvent("翻译器", "应用翻译到聊天框");
                     Reader.SetChatInputText(message);
                 }
                 else if (action == "close")
                 {
+                    TranslationController.LogEvent("翻译器", "关闭翻译器窗口");
                     lastInputText = null;
                     lastTranslated = null;
                     return; // The close button already deactivated the window
@@ -239,11 +280,11 @@ namespace Assistant.Controllers
                 apiKey = Properties.Settings.Default.SendDoubaoApiKey;
                 model = Properties.Settings.Default.SendDoubaoModel;
             }
-            else if (string.Equals(provider, "DoubaoFree", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(provider, "Zoom", StringComparison.OrdinalIgnoreCase))
             {
-                // DoubaoFree needs no API key; the endpoint URL is passed through
-                apiKey = Properties.Settings.Default.SendDoubaoFreeEndpoint;
-                model = Properties.Settings.Default.SendDoubaoModel;
+                // Zoom needs only a bearer token; no model is required
+                apiKey = Properties.Settings.Default.SendZoomApiKey;
+                model = string.Empty;
             }
             else
             {

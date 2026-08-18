@@ -17,41 +17,11 @@ namespace Assistant
         private static bool isRestarted;
 
         /// <summary>
-        /// Initializes the "follow system eligibility"
-        /// for the app mode and system accent color
+        /// Initializes the application window
         /// </summary>
         /// <param name="e"></param>
         protected override void OnStartup(StartupEventArgs e)
         {
-            // Initialize the eligibility
-            StyleController.InitializeFollowEligibility();
-
-            // Set the current app mode depending
-            // on the "follow system eligibility"
-            if (Settings.Default.FollowSystemMode)
-            {
-                if (AppController.CanFollowSystemMode)
-                    StyleController.DarkMode = StyleController.GetAppMode();
-                else
-                    Settings.Default.FollowSystemMode = false;
-            }
-
-            // Set the current app theme depending
-            // on the "follow system eligibility"
-            if (Settings.Default.FollowSystemColor)
-            {
-                if (AppController.CanFollowSystemColor)
-                {
-                    StyleController.ValidStyles.Add("Windows");
-                    StyleController.Style = "Windows";
-                }
-                else
-                    Settings.Default.FollowSystemColor = false;
-            }
-            Settings.Default.Save();
-
-            // Apply the changes
-            StyleController.UpdateTheme();
             base.OnStartup(e);
         }
 
@@ -121,11 +91,11 @@ namespace Assistant
         /// <param name="e"></param>
         private void Application_Exit(object sender, ExitEventArgs e)
         {
-            StyleController.StopWatchers();
             BackupController.Quitting = true;
             SendTranslationController.Stop();
             FiveMChatCaptureController.Stop();
             TranslationController.FlushCache();
+            TranslationStats.Flush();
         }
     }
 }

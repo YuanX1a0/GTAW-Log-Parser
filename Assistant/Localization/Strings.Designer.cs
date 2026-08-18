@@ -1134,12 +1134,6 @@ namespace Assistant.Localization {
             }
         }
 
-        internal static string TranslationProviderDoubaoFree {
-            get {
-                return ResourceManager.GetString("TranslationProviderDoubaoFree", resourceCulture);
-            }
-        }
-
         internal static string DoubaoApiKey {
             get {
                 return ResourceManager.GetString("DoubaoApiKey", resourceCulture);
@@ -1149,12 +1143,6 @@ namespace Assistant.Localization {
         internal static string DoubaoModel {
             get {
                 return ResourceManager.GetString("DoubaoModel", resourceCulture);
-            }
-        }
-
-        internal static string DoubaoFreeEndpoint {
-            get {
-                return ResourceManager.GetString("DoubaoFreeEndpoint", resourceCulture);
             }
         }
 
@@ -1170,15 +1158,117 @@ namespace Assistant.Localization {
             }
         }
 
-        internal static string SendDoubaoFreeEndpoint {
+        internal static string TranslationProviderZoom {
             get {
-                return ResourceManager.GetString("SendDoubaoFreeEndpoint", resourceCulture);
+                return ResourceManager.GetString("TranslationProviderZoom", resourceCulture);
+            }
+        }
+
+        internal static string TranslationProviderDoubaoCloud {
+            get {
+                return ResourceManager.GetString("TranslationProviderDoubaoCloud", resourceCulture);
+            }
+        }
+
+        internal static string DoubaoCloudApiKey {
+            get {
+                return ResourceManager.GetString("DoubaoCloudApiKey", resourceCulture);
+            }
+        }
+
+        internal static string DoubaoCloudModel {
+            get {
+                return ResourceManager.GetString("DoubaoCloudModel", resourceCulture);
+            }
+        }
+
+        internal static string DoubaoCloudEndpoint {
+            get {
+                return ResourceManager.GetString("DoubaoCloudEndpoint", resourceCulture);
+            }
+        }
+
+        internal static string SendDoubaoCloudApiKey {
+            get {
+                return ResourceManager.GetString("SendDoubaoCloudApiKey", resourceCulture);
+            }
+        }
+
+        internal static string SendDoubaoCloudModel {
+            get {
+                return ResourceManager.GetString("SendDoubaoCloudModel", resourceCulture);
+            }
+        }
+
+        internal static string SendDoubaoCloudEndpoint {
+            get {
+                return ResourceManager.GetString("SendDoubaoCloudEndpoint", resourceCulture);
+            }
+        }
+
+        internal static string ZoomApiKey {
+            get {
+                return ResourceManager.GetString("ZoomApiKey", resourceCulture);
+            }
+        }
+
+        internal static string SendZoomApiKey {
+            get {
+                return ResourceManager.GetString("SendZoomApiKey", resourceCulture);
             }
         }
 
         internal static string SettingsPageTranslation {
             get {
                 return ResourceManager.GetString("SettingsPageTranslation", resourceCulture);
+            }
+        }
+
+        internal static string SectionGameTranslation {
+            get {
+                return ResourceManager.GetString("SectionGameTranslation", resourceCulture);
+            }
+        }
+
+        internal static string OverviewCacheTitle {
+            get {
+                return ResourceManager.GetString("OverviewCacheTitle", resourceCulture);
+            }
+        }
+
+        internal static string OverviewCacheInfo {
+            get {
+                return ResourceManager.GetString("OverviewCacheInfo", resourceCulture);
+            }
+        }
+
+        internal static string Refresh {
+            get {
+                return ResourceManager.GetString("Refresh", resourceCulture);
+            }
+        }
+
+        internal static string DeleteTranslationCache {
+            get {
+                return ResourceManager.GetString("DeleteTranslationCache", resourceCulture);
+            }
+        }
+
+        internal static string DeleteTranslationCacheHint {
+            get {
+                return ResourceManager.GetString("DeleteTranslationCacheHint", resourceCulture);
+            }
+        }
+
+        internal static string DeleteTranslationCacheConfirm {
+            get {
+                return ResourceManager.GetString("DeleteTranslationCacheConfirm", resourceCulture);
+            }
+        }
+
+        internal static string TranslationCacheCleared {
+            get {
+                return ResourceManager.GetString("TranslationCacheCleared", resourceCulture);
             }
         }
 
@@ -1407,6 +1497,90 @@ namespace Assistant.Localization {
         internal static string MainTitle {
             get {
                 return ResourceManager.GetString("MainTitle", resourceCulture);
+            }
+        }
+
+        internal static string NavOverview {
+            get {
+                return ResourceManager.GetString("NavOverview", resourceCulture);
+            }
+        }
+
+        internal static string NavChatLog {
+            get {
+                return ResourceManager.GetString("NavChatLog", resourceCulture);
+            }
+        }
+
+        internal static string NavTranslation {
+            get {
+                return ResourceManager.GetString("NavTranslation", resourceCulture);
+            }
+        }
+
+        internal static string NavRealtimeLog {
+            get {
+                return ResourceManager.GetString("NavRealtimeLog", resourceCulture);
+            }
+        }
+
+        internal static string RealtimeLogHint {
+            get {
+                return ResourceManager.GetString("RealtimeLogHint", resourceCulture);
+            }
+        }
+
+        internal static string ClearLog {
+            get {
+                return ResourceManager.GetString("ClearLog", resourceCulture);
+            }
+        }
+
+        internal static string SectionGeneral {
+            get {
+                return ResourceManager.GetString("SectionGeneral", resourceCulture);
+            }
+        }
+
+        internal static string SectionProvider {
+            get {
+                return ResourceManager.GetString("SectionProvider", resourceCulture);
+            }
+        }
+
+        internal static string SectionSend {
+            get {
+                return ResourceManager.GetString("SectionSend", resourceCulture);
+            }
+        }
+
+        internal static string StatApiCalls {
+            get {
+                return ResourceManager.GetString("StatApiCalls", resourceCulture);
+            }
+        }
+
+        internal static string StatTokens {
+            get {
+                return ResourceManager.GetString("StatTokens", resourceCulture);
+            }
+        }
+
+        internal static string StatTotalCharacters {
+            get {
+                return ResourceManager.GetString("StatTotalCharacters", resourceCulture);
+            }
+        }
+
+        internal static string StatTotalTranslations {
+            get {
+                return ResourceManager.GetString("StatTotalTranslations", resourceCulture);
+            }
+        }
+
+        internal static string StatTopWords {
+            get {
+                return ResourceManager.GetString("StatTopWords", resourceCulture);
             }
         }
 

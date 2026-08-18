@@ -75,6 +75,7 @@ namespace Assistant.UI
             _mainWindow = mainWindow;
             mainWindow.GotKeyboardFocus += GainFocus;
             InitializeComponent();
+            SourceInitialized += (s, e) => AppController.ApplyRoundedCorners(this);
 
             Left = _mainWindow.Left + (_mainWindow.Width / 2 - Width / 2);
             Top = _mainWindow.Top + (_mainWindow.Height / 2 - Height / 2);

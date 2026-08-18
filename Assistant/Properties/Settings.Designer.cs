@@ -38,30 +38,6 @@ namespace Assistant.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool RemoveTimestamps {
-            get {
-                return ((bool)(this["RemoveTimestamps"]));
-            }
-            set {
-                this["RemoveTimestamps"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool CheckForUpdatesAutomatically {
-            get {
-                return ((bool)(this["CheckForUpdatesAutomatically"]));
-            }
-            set {
-                this["CheckForUpdatesAutomatically"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool BackupChatLogAutomatically {
             get {
                 return ((bool)(this["BackupChatLogAutomatically"]));
@@ -193,90 +169,6 @@ namespace Assistant.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("4")]
-        public int UpdateCheckTimeout {
-            get {
-                return ((int)(this["UpdateCheckTimeout"]));
-            }
-            set {
-                this["UpdateCheckTimeout"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool DisableForumsButton {
-            get {
-                return ((bool)(this["DisableForumsButton"]));
-            }
-            set {
-                this["DisableForumsButton"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool DisableFacebrowserButton {
-            get {
-                return ((bool)(this["DisableFacebrowserButton"]));
-            }
-            set {
-                this["DisableFacebrowserButton"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool DisableUCPButton {
-            get {
-                return ((bool)(this["DisableUCPButton"]));
-            }
-            set {
-                this["DisableUCPButton"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool DisableReleasesButton {
-            get {
-                return ((bool)(this["DisableReleasesButton"]));
-            }
-            set {
-                this["DisableReleasesButton"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool DisableProjectButton {
-            get {
-                return ((bool)(this["DisableProjectButton"]));
-            }
-            set {
-                this["DisableProjectButton"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool DarkMode {
-            get {
-                return ((bool)(this["DarkMode"]));
-            }
-            set {
-                this["DarkMode"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("Default")]
         public string Theme {
             get {
@@ -344,30 +236,6 @@ namespace Assistant.Properties {
             }
             set {
                 this["LastParsedAutoHash"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool IgnoreBetaVersions {
-            get {
-                return ((bool)(this["IgnoreBetaVersions"]));
-            }
-            set {
-                this["IgnoreBetaVersions"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool FollowSystemMode {
-            get {
-                return ((bool)(this["FollowSystemMode"]));
-            }
-            set {
-                this["FollowSystemMode"] = value;
             }
         }
         
@@ -545,6 +413,18 @@ namespace Assistant.Properties {
             }
             set {
                 this["TargetLanguage"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("auto")]
+        public string SourceLanguage {
+            get {
+                return ((string)(this["SourceLanguage"]));
+            }
+            set {
+                this["SourceLanguage"] = value;
             }
         }
         
@@ -838,18 +718,6 @@ namespace Assistant.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("http://127.0.0.1:8791/v1/chat/completions")]
-        public string DoubaoFreeEndpoint {
-            get {
-                return ((string)(this["DoubaoFreeEndpoint"]));
-            }
-            set {
-                this["DoubaoFreeEndpoint"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string SendDoubaoApiKey {
             get {
@@ -874,13 +742,25 @@ namespace Assistant.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("http://127.0.0.1:8791/v1/chat/completions")]
-        public string SendDoubaoFreeEndpoint {
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string ZoomApiKey {
             get {
-                return ((string)(this["SendDoubaoFreeEndpoint"]));
+                return ((string)(this["ZoomApiKey"]));
             }
             set {
-                this["SendDoubaoFreeEndpoint"] = value;
+                this["ZoomApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendZoomApiKey {
+            get {
+                return ((string)(this["SendZoomApiKey"]));
+            }
+            set {
+                this["SendZoomApiKey"] = value;
             }
         }
         

@@ -5,12 +5,6 @@
     <Setting Name="BackupPath" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="RemoveTimestamps" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="CheckForUpdatesAutomatically" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
     <Setting Name="BackupChatLogAutomatically" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
@@ -44,27 +38,6 @@
     <Setting Name="HasPickedLanguage" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="UpdateCheckTimeout" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">4</Value>
-    </Setting>
-    <Setting Name="DisableForumsButton" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
-    <Setting Name="DisableFacebrowserButton" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
-    <Setting Name="DisableUCPButton" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
-    <Setting Name="DisableReleasesButton" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="DisableProjectButton" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
-    <Setting Name="DarkMode" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
     <Setting Name="Theme" Type="System.String" Scope="User">
       <Value Profile="(Default)">Default</Value>
     </Setting>
@@ -82,12 +55,6 @@
     </Setting>
     <Setting Name="LastParsedAutoHash" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
-    </Setting>
-    <Setting Name="IgnoreBetaVersions" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
-    <Setting Name="FollowSystemMode" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="FollowSystemColor" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
@@ -133,6 +100,9 @@
     </Setting>
     <Setting Name="TargetLanguage" Type="System.String" Scope="User">
       <Value Profile="(Default)">zh-CN</Value>
+    </Setting>
+    <Setting Name="SourceLanguage" Type="System.String" Scope="User">
+      <Value Profile="(Default)">auto</Value>
     </Setting>
     <Setting Name="SendSourceLanguage" Type="System.String" Scope="User">
       <Value Profile="(Default)">zh-CN</Value>
@@ -206,17 +176,17 @@
     <Setting Name="DoubaoModel" Type="System.String" Scope="User">
       <Value Profile="(Default)">doubao-seed-2.0-lite</Value>
     </Setting>
-    <Setting Name="DoubaoFreeEndpoint" Type="System.String" Scope="User">
-      <Value Profile="(Default)">http://127.0.0.1:8791/v1/chat/completions</Value>
-    </Setting>
     <Setting Name="SendDoubaoApiKey" Type="System.String" Scope="User">
       <Value Profile="(Default)"></Value>
     </Setting>
     <Setting Name="SendDoubaoModel" Type="System.String" Scope="User">
       <Value Profile="(Default)">doubao-seed-2.0-lite</Value>
     </Setting>
-    <Setting Name="SendDoubaoFreeEndpoint" Type="System.String" Scope="User">
-      <Value Profile="(Default)">http://127.0.0.1:8791/v1/chat/completions</Value>
+    <Setting Name="ZoomApiKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)"></Value>
+    </Setting>
+    <Setting Name="SendZoomApiKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)"></Value>
     </Setting>
     <Setting Name="SettingsPageTranslation" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>

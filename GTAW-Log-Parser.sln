@@ -1,10 +1,8 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29102.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parser", "Parser\Parser.csproj", "{A5F504D1-BD89-479D-AB75-C7209FFE8BE2}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assistant", "Assistant\Assistant.csproj", "{1A4ABA12-1374-4EFB-94A6-3F28D99A581B}"
 EndProject
 Global
@@ -13,10 +11,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{A5F504D1-BD89-479D-AB75-C7209FFE8BE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A5F504D1-BD89-479D-AB75-C7209FFE8BE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A5F504D1-BD89-479D-AB75-C7209FFE8BE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A5F504D1-BD89-479D-AB75-C7209FFE8BE2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1A4ABA12-1374-4EFB-94A6-3F28D99A581B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1A4ABA12-1374-4EFB-94A6-3F28D99A581B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A4ABA12-1374-4EFB-94A6-3F28D99A581B}.Release|Any CPU.ActiveCfg = Release|Any CPU

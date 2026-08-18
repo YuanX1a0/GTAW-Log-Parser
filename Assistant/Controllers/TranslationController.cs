@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -20,7 +21,7 @@ namespace Assistant.Controllers
         private const string DeepLFreeApiUrl = "https://api-free.deepl.com/v2/translate";
         private const string DeepLProApiUrl = "https://api.deepl.com/v2/translate";
         private const string DoubaoChatUrl = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
-        private const string DoubaoFreeChatUrl = "http://127.0.0.1:8791/v1/chat/completions";
+        private const string ZoomTranslatorUrl = "https://api.zoom.us/v2/aiservices/translator/translate";
 
         static TranslationController()
         {
@@ -110,12 +111,153 @@ namespace Assistant.Controllers
 
         private static readonly object CacheLock = new object();
         private static readonly Dictionary<string, string> TranslationCache = new Dictionary<string, string>(StringComparer.Ordinal);
-        private const int MaxCacheEntries = 5000;
+        private const int MaxCacheEntries = 50000;
         private static readonly string CacheFileDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GTAW-Log-Parser");
         private static readonly string CacheFilePath = Path.Combine(CacheFileDirectory, "translation-cache.json");
+        public static readonly string ErrorLogPath = Path.Combine(CacheFileDirectory, "translation-errors.log");
+        public static readonly string AppLogPath = Path.Combine(CacheFileDirectory, "app.log");
         private static readonly object CacheSaveLock = new object();
         private static bool cacheDirty;
         private static readonly Timer CacheFlushTimer;
+
+        /// <summary>
+        /// Appends a general event line (timestamped, categorised) to the
+        /// application log that feeds the realtime log page. Never throws.
+        /// </summary>
+        public static void LogEvent(string category, string message)
+        {
+            try
+            {
+                Directory.CreateDirectory(CacheFileDirectory);
+                TrimLogIfNeeded();
+                string line = string.Format("{0:HH:mm:ss} [{1}] {2}{3}", DateTime.Now, category, message, Environment.NewLine);
+                File.AppendAllText(AppLogPath, line, Encoding.UTF8);
+            }
+            catch { /* never let logging break the app */ }
+        }
+
+        /// <summary>
+        /// Keeps app.log from growing without bound: once it exceeds 5 MB it is
+        /// truncated to the newest 1 MB so the realtime log page stays fast.
+        /// </summary>
+        private static void TrimLogIfNeeded()
+        {
+            const long maxBytes = 5 * 1024 * 1024;
+            const long keepBytes = 1 * 1024 * 1024;
+            FileInfo info = new FileInfo(AppLogPath);
+            if (!info.Exists || info.Length <= maxBytes)
+                return;
+            byte[] tail = new byte[keepBytes];
+            using (FileStream stream = new FileStream(AppLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                stream.Seek(-keepBytes, SeekOrigin.End);
+                stream.Read(tail, 0, tail.Length);
+            }
+            File.WriteAllBytes(AppLogPath, tail);
+        }
+
+        /// <summary>
+        /// Truncates a string for log lines, collapsing newlines.
+        /// </summary>
+        public static string Short(string s)
+        {
+            s = (s ?? string.Empty).Replace("\r", " ").Replace("\n", " ");
+            if (s.Length <= 40)
+                return s;
+            return s.Substring(0, 40) + "...";
+        }
+
+        /// <summary>
+        /// Appends a translation failure reason to the on-disk error log so the
+        /// user (or support) can see why a chat line stayed in the original
+        /// language instead of showing a translation.
+        /// </summary>
+        public static void LogTranslationError(string provider, string message)
+        {
+            try
+            {
+                Directory.CreateDirectory(CacheFileDirectory);
+                string line = string.Format("{0:HH:mm:ss} [{1}] {2}{3}", DateTime.Now, provider ?? "?", message, Environment.NewLine);
+                File.AppendAllText(ErrorLogPath, line, Encoding.UTF8);
+                LogEvent("error", (provider ?? "?") + " " + message);
+            }
+            catch { /* never let logging break translation */ }
+        }
+
+        /// <summary>
+        /// Number of entries currently held in the translation cache.
+        /// </summary>
+        public static int CacheCount
+        {
+            get
+            {
+                lock (CacheLock)
+                    return TranslationCache.Count;
+            }
+        }
+
+        /// <summary>
+        /// Size of the on-disk translation cache file in bytes.
+        /// </summary>
+        public static long CacheSizeBytes
+        {
+            get
+            {
+                try
+                {
+                    return File.Exists(CacheFilePath) ? new FileInfo(CacheFilePath).Length : 0;
+                }
+                catch
+                {
+                    return 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns the most recently cached translations (newest first), limited
+        /// to <paramref name="limit"/> entries.
+        /// </summary>
+        public static List<TranslationCacheEntry> GetRecentCacheEntries(int limit)
+        {
+            List<TranslationCacheEntry> result = new List<TranslationCacheEntry>();
+            lock (CacheLock)
+            {
+                int skip = Math.Max(0, TranslationCache.Count - limit);
+                int index = 0;
+                foreach (KeyValuePair<string, string> pair in TranslationCache)
+                {
+                    if (index++ < skip)
+                        continue;
+
+                    int lastSeparator = pair.Key.LastIndexOf('|');
+                    string source = lastSeparator >= 0 && lastSeparator < pair.Key.Length - 1
+                        ? pair.Key.Substring(lastSeparator + 1)
+                        : pair.Key;
+                    result.Add(new TranslationCacheEntry { Source = source, Translation = pair.Value });
+                    if (result.Count >= limit)
+                        break;
+                }
+            }
+            result.Reverse();
+            return result;
+        }
+
+        /// <summary>
+        /// Removes every cached translation from memory and disk.
+        /// </summary>
+        public static void ClearCache()
+        {
+            lock (CacheLock)
+            {
+                TranslationCache.Clear();
+            }
+            lock (CacheSaveLock)
+            {
+                cacheDirty = true;
+            }
+            FlushCacheTimerCallback(null);
+        }
 
         private static string GetCachedTranslation(string key)
         {
@@ -218,6 +360,8 @@ namespace Assistant.Controllers
             if (string.IsNullOrWhiteSpace(text))
                 return string.Empty;
 
+            TranslationStats.RecordTranslation(text);
+
             string cacheKey = "p:" + (provider ?? string.Empty) + "|s:" + (sourceLanguage ?? string.Empty) + "|t:" + (targetLanguage ?? string.Empty)
                 + "|m:" + (model ?? string.Empty) + "|y:" + (style ?? string.Empty) + "|q:" + (prompt ?? string.Empty) + "|" + text;
             string cached = GetCachedTranslation(cacheKey);
@@ -231,11 +375,12 @@ namespace Assistant.Controllers
                 result = TranslateWithDeepL(text, targetLanguage, sourceLanguage, apiKey);
             else if (string.Equals(provider, "Doubao", StringComparison.OrdinalIgnoreCase))
                 result = TranslateWithDoubao(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
-            else if (string.Equals(provider, "DoubaoFree", StringComparison.OrdinalIgnoreCase))
-                result = TranslateWithDoubaoFree(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+            else if (string.Equals(provider, "Zoom", StringComparison.OrdinalIgnoreCase))
+                result = TranslateWithZoom(text, targetLanguage, sourceLanguage, apiKey);
             else
                 result = Translate(text, targetLanguage, sourceLanguage);
 
+            LogEvent("翻译", (string.IsNullOrEmpty(provider) ? "Google" : provider) + " | " + Short(text) + " => " + Short(result));
             CacheTranslation(cacheKey, result);
             return result;
         }
@@ -273,6 +418,8 @@ namespace Assistant.Controllers
             using (Stream stream = response.GetResponseStream())
             using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
                 translated = ParseTranslation(reader.ReadToEnd());
+
+            TranslationStats.RecordApiCallEstimated(text);
 
             string result = NormalizePunctuation(RestoreTokens(translated, protectedTokens));
             CacheTranslation(cacheKey, result);
@@ -346,6 +493,7 @@ namespace Assistant.Controllers
                 responseJson = reader.ReadToEnd();
 
             string translated = ParseDeepSeekResponse(responseJson);
+            TranslationStats.RecordApiCall(ParseUsageTokens(responseJson));
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
         }
 
@@ -389,6 +537,7 @@ namespace Assistant.Controllers
             if (string.IsNullOrEmpty(translated))
                 return text;
 
+            TranslationStats.RecordApiCallEstimated(text);
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
         }
 
@@ -417,20 +566,139 @@ namespace Assistant.Controllers
         }
 
         /// <summary>
-        /// Translates the text using a free reverse-engineered Doubao web
-        /// endpoint (OpenAI-compatible, e.g. a local doubao-free-api proxy).
-        /// No API key is needed; the "apiKey" parameter holds the service URL
-        /// (defaults to the local doubao-free-api endpoint when empty).
+        /// Translates the text using the Zoom Translator API (fast mode).
+        /// Zoom only translates between English and one of its supported
+        /// languages, so the source side defaults to en-US when not given.
         /// </summary>
-        public static string TranslateWithDoubaoFree(string text, string targetLanguage, string sourceLanguage, string endpointUrl, string model, string prompt, string style)
+        public static string TranslateWithZoom(string text, string targetLanguage, string sourceLanguage, string apiKey)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return string.Empty;
-            if (string.IsNullOrWhiteSpace(endpointUrl))
-                endpointUrl = DoubaoFreeChatUrl;
-            if (string.IsNullOrWhiteSpace(model))
-                model = "doubao-seed-2.0-lite";
-            return PostOpenAiCompatible(endpointUrl, text, targetLanguage, sourceLanguage, null, model, prompt, style);
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("Zoom API token is missing.");
+
+            List<string> protectedTokens = new List<string>();
+            string protectedText = ProtectTokens(text, protectedTokens);
+
+            string target = ZoomTargetLanguage(targetLanguage);
+            if (string.IsNullOrEmpty(target))
+                throw new InvalidOperationException("Zoom Translator does not support the selected target language.");
+            string source = ZoomSourceLanguage(sourceLanguage);
+
+            Dictionary<string, object> config = new Dictionary<string, object>
+            {
+                { "target_languages", new[] { target } }
+            };
+            if (!string.IsNullOrEmpty(source))
+                config["source_language"] = source;
+
+            string payload = new JavaScriptSerializer().Serialize(new Dictionary<string, object>
+            {
+                { "text", protectedText },
+                { "config", config }
+            });
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(ZoomTranslatorUrl);
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.UserAgent = "Mozilla/5.0";
+            request.Timeout = 30000;
+            request.Headers["Authorization"] = "Bearer " + apiKey;
+
+            byte[] body = Encoding.UTF8.GetBytes(payload);
+            using (Stream requestStream = request.GetRequestStream())
+                requestStream.Write(body, 0, body.Length);
+
+            string responseJson;
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            using (Stream stream = response.GetResponseStream())
+            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                responseJson = reader.ReadToEnd();
+
+            string translated = ParseZoomResponse(responseJson, target);
+            TranslationStats.RecordApiCallEstimated(text);
+            return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
+        }
+
+        /// <summary>
+        /// Maps the internal language code to a Zoom BCP-47 locale code.
+        /// Returns null when the language is not supported by Zoom.
+        /// </summary>
+        private static string ZoomTargetLanguage(string code)
+        {
+            switch ((code ?? string.Empty).ToLowerInvariant())
+            {
+                case "zh-cn": return "zh-CN";
+                case "zh-tw": return "zh-TW";
+                case "en": return "en-US";
+                case "ja": return "ja-JP";
+                case "ko": return "ko-KR";
+                case "fr": return "fr-FR";
+                case "de": return "de-DE";
+                case "es": return "es-ES";
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// Maps the internal source language code to a Zoom BCP-47 locale code.
+        /// Auto/empty sources default to en-US because this tool translates
+        /// English GTAW chat and Zoom requires en-US on one side of a request.
+        /// </summary>
+        private static string ZoomSourceLanguage(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code) || string.Equals(code, "auto", StringComparison.OrdinalIgnoreCase))
+                return "en-US";
+
+            switch (code.ToLowerInvariant())
+            {
+                case "zh-cn": return "zh-CN";
+                case "zh-tw": return "zh-TW";
+                case "en": return "en-US";
+                case "ja": return "ja-JP";
+                case "ko": return "ko-KR";
+                case "fr": return "fr-FR";
+                case "de": return "de-DE";
+                case "es": return "es-ES";
+                default: return "en-US";
+            }
+        }
+
+        /// <summary>
+        /// Extracts the translated text from a Zoom Translator fast-mode
+        /// response. The result is a map keyed by target locale code.
+        /// </summary>
+        private static string ParseZoomResponse(string json, string targetCode)
+        {
+            JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+            IDictionary<string, object> root = serializer.DeserializeObject(json) as IDictionary<string, object>;
+            if (root == null)
+                throw new InvalidOperationException("Zoom returned an empty response.");
+
+            IDictionary<string, object> result = root.ContainsKey("result") ? root["result"] as IDictionary<string, object> : null;
+            IDictionary<string, object> translations = result != null && result.ContainsKey("translations")
+                ? result["translations"] as IDictionary<string, object>
+                : null;
+            if (translations == null || translations.Count == 0)
+                throw new InvalidOperationException("Zoom returned no translations.");
+
+            if (translations.ContainsKey(targetCode))
+            {
+                string value = translations[targetCode] as string;
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value.Trim();
+            }
+
+            // Fall back to the first available translation if the exact locale
+            // key is not present.
+            foreach (object value in translations.Values)
+            {
+                string textValue = value as string;
+                if (!string.IsNullOrWhiteSpace(textValue))
+                    return textValue.Trim();
+            }
+
+            throw new InvalidOperationException("Zoom returned an empty translation.");
         }
 
         /// <summary>
@@ -488,6 +756,7 @@ namespace Assistant.Controllers
                 responseJson = reader.ReadToEnd();
 
             string translated = ParseDeepSeekResponse(responseJson);
+            TranslationStats.RecordApiCall(ParseUsageTokens(responseJson));
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
         }
 
@@ -683,6 +952,44 @@ namespace Assistant.Controllers
                 throw new InvalidOperationException("DeepSeek returned an empty translation.");
 
             return content.Trim();
+        }
+
+        /// <summary>
+        /// Extracts the total token usage from an OpenAI-compatible response.
+        /// Returns 0 when the response does not carry a usage object.
+        /// </summary>
+        private static int ParseUsageTokens(string json)
+        {
+            try
+            {
+                JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+                IDictionary<string, object> root = serializer.DeserializeObject(json) as IDictionary<string, object>;
+                if (root != null && root.ContainsKey("usage"))
+                {
+                    IDictionary<string, object> usage = root["usage"] as IDictionary<string, object>;
+                    if (usage != null && usage.ContainsKey("total_tokens"))
+                    {
+                        object value = usage["total_tokens"];
+                        if (value != null)
+                            return Convert.ToInt32(value);
+                    }
+                }
+            }
+            catch
+            {
+                // usage is optional; fall through to 0
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// A single cached translation shown in the overview page.
+        /// </summary>
+        public class TranslationCacheEntry
+        {
+            public string Source { get; set; }
+            public string Translation { get; set; }
         }
     }
 }

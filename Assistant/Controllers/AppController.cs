@@ -3,17 +3,18 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Interop;
+using System.Runtime.InteropServices;
 using Assistant.Localization;
 
 namespace Assistant.Controllers
 {
     public static class AppController
     {
-        public const string AssemblyVersion = "5.2.0";
+        public const string AssemblyVersion = "6.0.0";
         public static readonly string Version = "v" + AssemblyVersion;
         public const bool IsBetaVersion = false;
         public static bool CanFollowSystemColor = false;
-        public static bool CanFollowSystemMode = false;
 
         public const string ParameterPrefix = "--";
         public const string ProductHeader = "GTAW-FiveM-Log-Parser";
@@ -30,6 +31,34 @@ namespace Assistant.Controllers
         {
             FiveMChatCaptureController.Initialize();
             SendTranslationController.Start();
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DwmwaWindowCornerPreference = 33;
+        private const int DwmwcpRound = 2;
+
+        /// <summary>
+        /// Applies Windows 11 rounded corners to the given window
+        /// through the DWM corner preference API. No-op on older
+        /// Windows versions that do not support the attribute.
+        /// </summary>
+        public static void ApplyRoundedCorners(Window window)
+        {
+            try
+            {
+                IntPtr hwnd = new WindowInteropHelper(window).Handle;
+                if (hwnd == IntPtr.Zero)
+                    return;
+
+                int preference = DwmwcpRound;
+                DwmSetWindowAttribute(hwnd, DwmwaWindowCornerPreference, ref preference, sizeof(int));
+            }
+            catch
+            {
+                // Rounded corners are cosmetic; ignore failures on unsupported systems.
+            }
         }
 
         public static bool IsFiveMRunning()

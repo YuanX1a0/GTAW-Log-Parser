@@ -11,6 +11,7 @@ using System.Threading;
 using System.Web.Script.Serialization;
 using System.Globalization;
 using Assistant.Localization;
+using Assistant.UI;
 
 namespace Assistant.Controllers
 {
@@ -121,6 +122,7 @@ namespace Assistant.Controllers
                                 Reader.Close();
                                 previousVisibleLines.Clear();
                             }
+                            TranslationController.LogEvent("game", "游戏已断开");
                         }
 
                         wasFiveMRunning = false;
@@ -136,12 +138,21 @@ namespace Assistant.Controllers
                             previousVisibleLines.Clear();
                             File.WriteAllText(SessionFile, string.Empty, new UTF8Encoding(false));
                         }
+                        TranslationController.LogEvent("game", "游戏已连接，新会话开始");
                         wasFiveMRunning = true;
                     }
 
                     lock (SyncRoot)
                     {
                         AppendNewLines(Reader.GetChatLines());
+                        try
+                        {
+                            ProcessHotkeyToasts();
+                        }
+                        catch
+                        {
+                            // NUI may be reloading; the flag will be read on the next poll
+                        }
                         if (Properties.Settings.Default.TranslationEnabled)
                         {
                             try
@@ -176,6 +187,29 @@ namespace Assistant.Controllers
                 }
 
                 Thread.Sleep(PollIntervalMilliseconds);
+            }
+        }
+
+        /// <summary>
+        /// Reports in-game hotkey presses (auto translate, bulk translate,
+        /// translator toggle) as Windows toasts. Runs independently of the
+        /// chat-log translation toggle so the translator hotkey is always
+        /// reported.
+        /// </summary>
+        private static void ProcessHotkeyToasts()
+        {
+            try
+            {
+                string toastFlag = Reader.ReadHotkeyToastFlag();
+                if (!string.IsNullOrEmpty(toastFlag))
+                {
+                    TranslationController.LogEvent("热键", toastFlag);
+                    ShowHotkeyToast(toastFlag);
+                }
+            }
+            catch
+            {
+                // NUI may be reloading; the flag will be read on the next poll
             }
         }
 
@@ -216,6 +250,42 @@ namespace Assistant.Controllers
                         InFlightTranslations.Remove(item.Id);
                 }
             }
+        }
+
+        /// <summary>
+        /// Shows a Windows toast notification for a hotkey event flag coming
+        /// from the in-game hooks.
+        /// </summary>
+        private static void ShowHotkeyToast(string flag)
+        {
+            string text = null;
+            switch (flag)
+            {
+                case "auto:on":
+                    text = Strings.ToastPrefix + Strings.ToastAutoOn;
+                    break;
+                case "auto:off":
+                    text = Strings.ToastPrefix + Strings.ToastAutoOff;
+                    break;
+                case "bulk":
+                    text = Strings.ToastPrefix + Strings.ToastBulkDone;
+                    break;
+                case "send:on":
+                    text = Strings.ToastPrefix + Strings.ToastTranslatorOn;
+                    break;
+                case "send:off":
+                    text = Strings.ToastPrefix + Strings.ToastTranslatorOff;
+                    break;
+            }
+
+            if (text == null)
+                return;
+
+            MainWindow window = System.Windows.Application.Current != null
+                ? System.Windows.Application.Current.MainWindow as MainWindow
+                : null;
+            if (window != null)
+                window.ShowWindowsToast(text);
         }
 
         private static void StartTranslationWorkerIfNeeded()
@@ -289,11 +359,11 @@ namespace Assistant.Controllers
                 apiKey = Properties.Settings.Default.DoubaoApiKey;
                 model = Properties.Settings.Default.DoubaoModel;
             }
-            else if (string.Equals(provider, "DoubaoFree", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(provider, "Zoom", StringComparison.OrdinalIgnoreCase))
             {
-                // DoubaoFree needs no API key; the endpoint URL is passed through
-                apiKey = Properties.Settings.Default.DoubaoFreeEndpoint;
-                model = Properties.Settings.Default.DoubaoModel;
+                // Zoom needs only a bearer token; no model is required
+                apiKey = Properties.Settings.Default.ZoomApiKey;
+                model = string.Empty;
             }
             else
             {
@@ -326,7 +396,7 @@ namespace Assistant.Controllers
                     string translated = TranslationController.Translate(
                         combined.ToString(),
                         Properties.Settings.Default.TargetLanguage,
-                        "auto",
+                        Properties.Settings.Default.SourceLanguage,
                         Properties.Settings.Default.TranslationProvider,
                         apiKey,
                         model,
@@ -334,8 +404,9 @@ namespace Assistant.Controllers
                         Properties.Settings.Default.TranslationStyle);
                     translatedLines = translated.Split('\n');
                 }
-                catch
+                catch (Exception ex)
                 {
+                    TranslationController.LogTranslationError(provider, "batch: " + ex.Message);
                     translatedLines = null;
                 }
 
@@ -364,15 +435,16 @@ namespace Assistant.Controllers
                             translatedText = TranslationController.Translate(
                                 segments[idx].Text,
                                 Properties.Settings.Default.TargetLanguage,
-                                "auto",
+                                Properties.Settings.Default.SourceLanguage,
                                 Properties.Settings.Default.TranslationProvider,
                                 apiKey,
                                 model,
                                 Properties.Settings.Default.TranslationPrompt,
                                 Properties.Settings.Default.TranslationStyle);
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            TranslationController.LogTranslationError(provider, "single: " + ex.Message);
                             translatedText = segments[idx].Text;
                         }
                         result[idx] = new TranslationSegment { Text = translatedText, Styles = segments[idx].Styles };
@@ -425,6 +497,8 @@ namespace Assistant.Controllers
                 previousVisibleLines = current;
                 return;
             }
+
+            TranslationController.LogEvent("聊天", "捕获 " + newLines.Count + " 条新消息");
 
             DateTime capturedAt = DateTime.Now;
             DateTime sessionTimestamp = GetTimestamp(newLines[0], capturedAt);
@@ -545,14 +619,14 @@ namespace Assistant.Controllers
                     + "function processAdded(muts){ var items = []; for(var m = 0; m < muts.length; m++){ var added = muts[m].addedNodes; for(var i = 0; i < added.length; i++){ var n = added[i]; if(n.nodeType === 1 && n.matches && n.matches('.chat__messages > li')) items.push(n); } } if(!items.length) return; items.forEach(function(li){ if(!li.__gtawPendingId && !li.querySelector('[data-gtaw-tid]')){ var rid = 'gtawa-' + Date.now() + '-' + Math.random().toString(36).substr(2,6); enqueue(li, rid); } }); } "
                     + "function ensureAutoObserver(){ if(window.__gtawAutoTranslate){ if(!window.__gtawAutoObs){ var container = document.querySelector('.chat__messages'); if(!container) return; window.__gtawAutoObs = new MutationObserver(function(muts){ setTimeout(function(){ processAdded(muts); }, 50); }); window.__gtawAutoObs.observe(container, { childList: true }); } } else { if(window.__gtawAutoObs){ window.__gtawAutoObs.disconnect(); window.__gtawAutoObs = null; } } } "
                     + "function toggleAuto(v){ if(typeof v !== 'undefined'){ window.__gtawAutoTranslate = !!v; } else { window.__gtawAutoTranslate = !window.__gtawAutoTranslate; } ensureAutoObserver(); } window.__gtawToggleAuto = toggleAuto; "
-                    + "var autoHandler = function(e){ var hot = window.__gtawAutoHotkey || 'Ctrl+Shift+F9'; var parts = hot.split('+'); var keyName = (parts.pop() || 'F9').toUpperCase(); var needsCtrl = false, needsShift = false; for(var i = 0; i < parts.length; i++){ var p = parts[i].trim(); if(p === 'Ctrl') needsCtrl = true; else if(p === 'Shift') needsShift = true; } var pressed = (e.key || '').toUpperCase(); if(pressed !== keyName) return; if(needsCtrl !== (e.ctrlKey || e.metaKey)) return; if(needsShift !== e.shiftKey) return; if(e.repeat) return; toggleAuto(); showToast(window.__gtawAutoTranslate ? window.__gtawToastAutoOn : window.__gtawToastAutoOff); }; "
+                    + "var autoHandler = function(e){ var hot = window.__gtawAutoHotkey || 'Ctrl+Shift+F9'; var parts = hot.split('+'); var keyName = (parts.pop() || 'F9').toUpperCase(); var needsCtrl = false, needsShift = false; for(var i = 0; i < parts.length; i++){ var p = parts[i].trim(); if(p === 'Ctrl') needsCtrl = true; else if(p === 'Shift') needsShift = true; } var pressed = (e.key || '').toUpperCase(); if(pressed !== keyName) return; if(needsCtrl !== (e.ctrlKey || e.metaKey)) return; if(needsShift !== e.shiftKey) return; if(e.repeat) return; toggleAuto(); showToast(window.__gtawAutoTranslate ? window.__gtawToastAutoOn : window.__gtawToastAutoOff); window.__gtawToastWindows = window.__gtawAutoTranslate ? 'auto:on' : 'auto:off'; }; "
                     + "window.__gtawAutoHandler = autoHandler; document.addEventListener('keydown', autoHandler, true); "
                     + "var handler = function(e){ var li = (e.target && e.target.closest) ? e.target.closest('.chat__messages > li') : null; if(!li) return; var text = (li.innerText || '').replace(/\\s+/g, ' ').trim(); if(!text) return; "
                     + "if(window.__gtawMode === 'replace'){ if(li.__gtawTranslated){ li.innerHTML = li.__gtawOriginalHtml; li.__gtawTranslated = false; return; } if(li.__gtawPendingId){ window.__gtawPendingTranslations.push({ id: li.__gtawPendingId, segs: li.__gtawSegs }); return; } var rid = 'gtaw-' + Date.now() + '-' + Math.random().toString(36).substr(2,6); enqueue(li, rid); return; } "
                     + "var existing = li.querySelector('[data-gtaw-tid]'); if(existing){ if(existing.textContent && existing.textContent !== '...'){ existing.style.display = existing.style.display === 'none' ? '' : 'none'; } else { window.__gtawPendingTranslations.push({ id: existing.getAttribute('data-gtaw-tid'), segs: li.__gtawSegs }); } return; } "
                     + "var id = 'gtaw-' + Date.now() + '-' + Math.random().toString(36).substr(2,6); enqueue(li, id); }; "
                     + "window.__gtawTranslatorHandler = handler; document.addEventListener('click', handler, true); "
-                    + "var bulkHandler = function(e){ var hot = window.__gtawBulkHotkey || 'Ctrl+F9'; var ctrl = hot.indexOf('Ctrl') === 0; var keyName = (hot.split('+').pop() || 'F9').toUpperCase(); var pressed = (e.key || '').toUpperCase(); if(pressed !== keyName) return; if(ctrl !== (e.ctrlKey || e.metaKey)) return; if(e.repeat) return; var lis = document.querySelectorAll('.chat__messages > li'); var start = Math.max(0, lis.length - 10); for(var i = start; i < lis.length; i++){ var li = lis[i]; var txt = (li.innerText || '').replace(/\\s+/g, ' ').trim(); if(!txt) continue; if(li.__gtawPendingId || li.querySelector('[data-gtaw-tid]')) continue; var rid = 'gtawb-' + Date.now() + '-' + i + '-' + Math.random().toString(36).substr(2,6); enqueue(li, rid); } showToast(window.__gtawToastBulk); }; "
+                    + "var bulkHandler = function(e){ var hot = window.__gtawBulkHotkey || 'Ctrl+F9'; var ctrl = hot.indexOf('Ctrl') === 0; var keyName = (hot.split('+').pop() || 'F9').toUpperCase(); var pressed = (e.key || '').toUpperCase(); if(pressed !== keyName) return; if(ctrl !== (e.ctrlKey || e.metaKey)) return; if(e.repeat) return; var lis = document.querySelectorAll('.chat__messages > li'); var start = Math.max(0, lis.length - 10); for(var i = start; i < lis.length; i++){ var li = lis[i]; var txt = (li.innerText || '').replace(/\\s+/g, ' ').trim(); if(!txt) continue; if(li.__gtawPendingId || li.querySelector('[data-gtaw-tid]')) continue; var rid = 'gtawb-' + Date.now() + '-' + i + '-' + Math.random().toString(36).substr(2,6); enqueue(li, rid); } showToast(window.__gtawToastBulk); window.__gtawToastWindows = 'bulk'; }; "
                     + "window.__gtawBulkHandler = bulkHandler; document.addEventListener('keydown', bulkHandler, true); "
                     + "ensureAutoObserver(); window.__gtawAutoRetry = setInterval(function(){ if(window.__gtawAutoTranslate && !window.__gtawAutoObs){ ensureAutoObserver(); } }, 2000); })();";
                 IDictionary<string, object> hookResult = Request("Runtime.evaluate", new Dictionary<string, object>
@@ -744,6 +818,29 @@ namespace Assistant.Controllers
                 return list;
             }
 
+            /// <summary>
+            /// Reads and clears the hotkey notification flag set by the in-game
+            /// JavaScript hooks. Returns null when no hotkey was pressed since the
+            /// last poll.
+            /// </summary>
+            public string ReadHotkeyToastFlag(bool onlySend = false)
+            {
+                EnsureConnected();
+                string expression = onlySend
+                    ? "(function(){ var f = window.__gtawToastWindows || ''; if(f === 'send:on' || f === 'send:off'){ window.__gtawToastWindows = ''; } return f; })()"
+                    : "(function(){ var f = window.__gtawToastWindows || ''; window.__gtawToastWindows = ''; return f; })()";
+                IDictionary<string, object> result = Request("Runtime.evaluate", new Dictionary<string, object>
+                {
+                    { "expression", expression },
+                    { "contextId", contextId },
+                    { "returnByValue", true }
+                });
+
+                IDictionary<string, object> runtimeResult = DictionaryValue(result, "result");
+                string value = runtimeResult != null && runtimeResult.ContainsKey("value") ? runtimeResult["value"] as string : null;
+                return string.IsNullOrEmpty(value) ? null : value;
+            }
+
             public void ShowTranslation(string id, List<TranslationSegment> segments, bool success)
             {
                 EnsureConnected();
@@ -791,7 +888,7 @@ namespace Assistant.Controllers
                 string toastOnJson = serializer.Serialize((toastPrefix ?? string.Empty) + (toastOn ?? string.Empty));
                 string toastOffJson = serializer.Serialize((toastPrefix ?? string.Empty) + (toastOff ?? string.Empty));
                 string toastFlag = showToasts ? "true" : "false";
-                string hook = "(function(){ if(window.__gtawSendVersion === 6){ window.__gtawSendHotkey = " + keyJson + "; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastSendOn = " + toastOnJson + "; window.__gtawToastSendOff = " + toastOffJson + "; return; } window.__gtawSendVersion = 6; "
+                string hook = "(function(){ if(window.__gtawSendVersion === 7){ window.__gtawSendHotkey = " + keyJson + "; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastSendOn = " + toastOnJson + "; window.__gtawToastSendOff = " + toastOffJson + "; return; } window.__gtawSendVersion = 7; "
                     + "window.__gtawSendActive = false; window.__gtawSendVisible = false; window.__gtawSendResult = null; window.__gtawSendHotkey = " + keyJson + "; window.__gtawSendDiag = null; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastSendOn = " + toastOnJson + "; window.__gtawToastSendOff = " + toastOffJson + "; "
                     + "if(window.__gtawSendKeyHandler){ document.removeEventListener('keydown', window.__gtawSendKeyHandler, true); } "
                     + "if(window.__gtawSendPlaceTimer){ clearInterval(window.__gtawSendPlaceTimer); } "
@@ -801,12 +898,12 @@ namespace Assistant.Controllers
                     + "var ovx = document.getElementById('gtaw-send-overlay'); if(ovx && ovx.parentNode){ ovx.parentNode.removeChild(ovx); } "
                     + "if(window.__gtawSendDragMove){ document.removeEventListener('mousemove', window.__gtawSendDragMove); } if(window.__gtawSendDragUp){ document.removeEventListener('mouseup', window.__gtawSendDragUp); } if(window.__gtawSendResizeMove){ document.removeEventListener('mousemove', window.__gtawSendResizeMove); } if(window.__gtawSendResizeUp){ document.removeEventListener('mouseup', window.__gtawSendResizeUp); } "
                     + "function showToast(msg){ if(window.__gtawShowToasts === false) return; var t = document.getElementById('gtaw-toast'); if(!t){ t = document.createElement('div'); t.id = 'gtaw-toast'; t.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(20,20,24,0.9);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:6px 14px;font-family:Segoe UI,Arial,sans-serif;font-size:12px;z-index:20000;pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,0.5);white-space:nowrap;'; document.body.appendChild(t); } t.textContent = msg; t.style.display = 'block'; clearTimeout(t.__gtawToastTimer); t.__gtawToastTimer = setTimeout(function(){ t.style.display = 'none'; }, 2500); } window.__gtawToast = showToast; "
-                    + "function getInput(){ var ae = document.activeElement; if(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return ae; var el = document.querySelector('.chat__input input') || document.querySelector('.chat-input input') || document.querySelector('.chat__input textarea') || document.querySelector('.chat-input textarea'); if(el) return el; var inputs = document.querySelectorAll('input, textarea'); for(var i = 0; i < inputs.length; i++){ var tag = inputs[i].tagName; var t = (inputs[i].type || 'text').toLowerCase(); if(tag === 'TEXTAREA' || (t !== 'checkbox' && t !== 'radio' && t !== 'button' && t !== 'submit' && t !== 'hidden')) return inputs[i]; } var ce = document.querySelector('[contenteditable=\"true\"]') || document.querySelector('[contenteditable=\"\"]'); if(ce) return ce; return null; } "
+                    + "function getInput(){ function inOv(el){ return !!(el && el.closest && el.closest('#gtaw-send-overlay')); } var ae = document.activeElement; if(ae && !inOv(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return ae; var el = document.querySelector('.chat__input input') || document.querySelector('.chat-input input') || document.querySelector('.chat__input textarea') || document.querySelector('.chat-input textarea'); if(el && !inOv(el)) return el; var inputs = document.querySelectorAll('input, textarea'); for(var i = 0; i < inputs.length; i++){ if(inOv(inputs[i])) continue; var tag = inputs[i].tagName; var t = (inputs[i].type || 'text').toLowerCase(); if(tag === 'TEXTAREA' || (t !== 'checkbox' && t !== 'radio' && t !== 'button' && t !== 'submit' && t !== 'hidden')) return inputs[i]; } var ce = document.querySelector('[contenteditable=\"true\"]') || document.querySelector('[contenteditable=\"\"]'); if(ce && !inOv(ce)) return ce; return null; } "
                     + "function readVal(el){ return el.isContentEditable ? (el.textContent || '') : (el.value || ''); } "
                     + "function chatOpen(){ var ov = document.getElementById('gtaw-send-overlay'); var el = getInput(); if(!el) return false; if(ov && ov.contains(el)) return false; var st = window.getComputedStyle(el); if(st.display === 'none' || st.visibility === 'hidden') return false; var op = parseFloat(st.opacity); if(!isNaN(op) && op <= 0.02) return false; var r = el.getBoundingClientRect(); if(!(r.width > 0 && r.height > 0)) return false; var inChat = !!(el.closest && el.closest('.chat__input, .chat-input, [class*=\"chat\" i], [id*=\"chat\" i]')); if(!inChat && r.bottom < window.innerHeight * 0.30) return false; return true; } "
-                    + "function syncTranslator(){ var active = !!window.__gtawSendActive; var open = chatOpen(); var ov = document.getElementById('gtaw-send-overlay'); if(active && open){ if(ov){ ov.style.display = ''; } window.__gtawSendVisible = true; } else { if(ov){ ov.style.display = 'none'; } window.__gtawSendVisible = false; } } "
+                    + "function syncTranslator(){ var open = chatOpen(); if(open === window.__gtawSendLastOpen){ window.__gtawSendStable = (window.__gtawSendStable || 0) + 1; } else { window.__gtawSendLastOpen = open; window.__gtawSendStable = 1; } if(window.__gtawSendStable < 2) return; var active = !!window.__gtawSendActive; var ov = document.getElementById('gtaw-send-overlay'); if(active && open){ if(ov){ ov.style.display = ''; } window.__gtawSendVisible = true; } else { if(ov){ ov.style.display = 'none'; } window.__gtawSendVisible = false; } } "
                     + "window.__gtawSendSync = syncTranslator; "
-                    + "window.__gtawSendToggle = function(){ window.__gtawSendActive = !window.__gtawSendActive; syncTranslator(); showToast(window.__gtawSendActive ? window.__gtawToastSendOn : window.__gtawToastSendOff); }; "
+                    + "window.__gtawSendToggle = function(){ window.__gtawSendActive = !window.__gtawSendActive; syncTranslator(); showToast(window.__gtawSendActive ? window.__gtawToastSendOn : window.__gtawToastSendOff); window.__gtawToastWindows = window.__gtawSendActive ? 'send:on' : 'send:off'; }; "
                     + "var keyHandler = function(e){ if(e.key === window.__gtawSendHotkey || e.code === window.__gtawSendHotkey){ e.preventDefault(); e.stopPropagation(); window.__gtawSendToggle(); return; } if(e.key === 'Escape'){ setTimeout(function(){ syncTranslator(); }, 120); } }; "
                     + "window.__gtawSendKeyHandler = keyHandler; document.addEventListener('keydown', keyHandler, true); "
                     + "var btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'T'; btn.title = 'Translator'; btn.style.cssText = 'background:#3a3a3a;color:#fff;border:1px solid #777;border-radius:4px;padding:0 8px;cursor:pointer;font-size:12px;line-height:20px;margin-left:4px;'; "
@@ -814,7 +911,7 @@ namespace Assistant.Controllers
                     + "btn.addEventListener('click', btnHandler); window.__gtawSendBtn = btn; window.__gtawSendBtnHandler = btnHandler; "
                     + "function placeBtn(){ if(btn.parentNode) return; var input = getInput(); if(input && input.parentNode){ input.parentNode.appendChild(btn); } else if(document.body){ btn.style.position = 'fixed'; btn.style.right = '8px'; btn.style.bottom = '8px'; btn.style.zIndex = '9999'; document.body.appendChild(btn); } } "
                     + "placeBtn(); window.__gtawSendPlaceTimer = setInterval(placeBtn, 2000); "
-                    + "window.__gtawSendVisTimer = setInterval(syncTranslator, 400); "
+                    + "window.__gtawSendVisTimer = setInterval(syncTranslator, 250); "
                     + "window.__gtawSendFastTimer = setInterval(function(){ if(window.__gtawSendActive && !document.getElementById('gtaw-send-overlay')){ var el = getInput(); if(!el) return; var st = window.getComputedStyle(el); if(st.display === 'none' || st.visibility === 'hidden') return; var op = parseFloat(st.opacity); if(!isNaN(op) && op <= 0.02) return; var r = el.getBoundingClientRect(); if(!(r.width > 0 && r.height > 0)) return; var inChat = !!(el.closest && el.closest('.chat__input, .chat-input, [class*=\"chat\" i], [id*=\"chat\" i]')); if(!inChat && r.bottom < window.innerHeight * 0.30) return; syncTranslator(); } }, 100); })();";
                 Request("Runtime.evaluate", new Dictionary<string, object>
                 {
@@ -836,7 +933,7 @@ namespace Assistant.Controllers
                     + "if(window.__gtawSendBtn && window.__gtawSendBtn.parentNode){ window.__gtawSendBtn.parentNode.removeChild(window.__gtawSendBtn); } "
                     + "if(window.__gtawSendDragMove){ document.removeEventListener('mousemove', window.__gtawSendDragMove); } if(window.__gtawSendDragUp){ document.removeEventListener('mouseup', window.__gtawSendDragUp); } if(window.__gtawSendResizeMove){ document.removeEventListener('mousemove', window.__gtawSendResizeMove); } if(window.__gtawSendResizeUp){ document.removeEventListener('mouseup', window.__gtawSendResizeUp); } "
                     + "var ov = document.getElementById('gtaw-send-overlay'); if(ov && ov.parentNode){ ov.parentNode.removeChild(ov); } var tt = document.getElementById('gtaw-toast'); if(tt && tt.parentNode){ tt.parentNode.removeChild(tt); } "
-                    + "delete window.__gtawSendKeyHandler; delete window.__gtawSendBtn; delete window.__gtawSendBtnHandler; delete window.__gtawSendResult; delete window.__gtawSendToggle; delete window.__gtawSendSync; delete window.__gtawSendActive; delete window.__gtawSendVisible; delete window.__gtawSendHotkey; delete window.__gtawSendVersion; delete window.__gtawSendPlaceTimer; delete window.__gtawSendVisTimer; delete window.__gtawSendFastTimer; delete window.__gtawSendPos; delete window.__gtawShowToasts; delete window.__gtawToast; delete window.__gtawSendResizeMove; delete window.__gtawSendResizeUp;";
+                    + "delete window.__gtawSendKeyHandler; delete window.__gtawSendBtn; delete window.__gtawSendBtnHandler; delete window.__gtawSendResult; delete window.__gtawSendToggle; delete window.__gtawSendSync; delete window.__gtawSendActive; delete window.__gtawSendVisible; delete window.__gtawSendHotkey; delete window.__gtawSendVersion; delete window.__gtawSendPlaceTimer; delete window.__gtawSendVisTimer; delete window.__gtawSendFastTimer; delete window.__gtawSendPos; delete window.__gtawSendLastOpen; delete window.__gtawSendStable; delete window.__gtawShowToasts; delete window.__gtawToast; delete window.__gtawSendResizeMove; delete window.__gtawSendResizeUp;";
                 Request("Runtime.evaluate", new Dictionary<string, object>
                 {
                     { "expression", uninstallExpression },
@@ -893,8 +990,7 @@ namespace Assistant.Controllers
                     + "var grip = document.createElement('div'); grip.style.cssText = 'position:absolute;right:2px;bottom:2px;width:12px;height:12px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 45%,rgba(255,255,255,0.5) 50%,transparent 55%);'; ov.appendChild(grip); "
                     + "document.addEventListener('mousemove', window.__gtawSendDragMove); document.addEventListener('mouseup', window.__gtawSendDragUp); "
                     + "document.addEventListener('mousemove', window.__gtawSendResizeMove); document.addEventListener('mouseup', window.__gtawSendResizeUp); "
-                    + "window.__gtawSendPos = null; "
-                    + "ta.focus(); setTimeout(function(){ ta.focus(); ta.select(); }, 100); })();";
+                    + "window.__gtawSendPos = null; })();";
                 Request("Runtime.evaluate", new Dictionary<string, object>
                 {
                     { "expression", expression },
@@ -990,7 +1086,7 @@ namespace Assistant.Controllers
                 try
                 {
                     EnsureConnected();
-                    const string expression = "(function(){ var ae = document.activeElement; if(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)){ return ae.isContentEditable ? ae.textContent : ae.value; } var el = document.querySelector('.chat__input input') || document.querySelector('.chat-input input') || document.querySelector('.chat__input textarea') || document.querySelector('.chat-input textarea'); if(el) return el.isContentEditable ? el.textContent : el.value; return null; })();";
+                    const string expression = "(function(){ function inOv(el){ return !!(el && el.closest && el.closest('#gtaw-send-overlay')); } var ae = document.activeElement; if(ae && !inOv(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)){ return ae.isContentEditable ? ae.textContent : ae.value; } var el = document.querySelector('.chat__input input') || document.querySelector('.chat-input input') || document.querySelector('.chat__input textarea') || document.querySelector('.chat-input textarea'); if(el) return el.isContentEditable ? el.textContent : el.value; return null; })();";
                     IDictionary<string, object> result = Request("Runtime.evaluate", new Dictionary<string, object>
                     {
                         { "expression", expression },

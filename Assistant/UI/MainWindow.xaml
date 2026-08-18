@@ -1,4 +1,4 @@
-﻿<Controls:MetroWindow x:Name="Main" x:Class="Assistant.UI.MainWindow"
+<Controls:MetroWindow x:Name="Main" x:Class="Assistant.UI.MainWindow"
                       xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
                       xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
                       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -7,89 +7,476 @@
                       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                       xmlns:local="clr-namespace:Assistant.UI"
                       mc:Ignorable="d"
-                      ResizeMode="CanMinimize"
+                      ResizeMode="CanResize"
                       WindowStartupLocation="CenterScreen"
                       Closing="Main_Closing"
                       WindowTransitionsEnabled="True"
-                      GlowBrush="{DynamicResource AccentColorBrush}"
-                      Title="GTA World FiveM Chat Log Assistant" Height="260" Width="638" IsMaxRestoreButtonEnabled="False" IsMinButtonEnabled="True" TitleCaps="False" ShowIconOnTitleBar="False" Icon="../Resources/AppIcon.ico">
+                      GlowBrush="Transparent"
+                      BorderThickness="0"
+                      WindowTitleBrush="{DynamicResource FluentCardBackground}"
+                      TitleForeground="{DynamicResource FluentTextForeground}"
+                      FontFamily="Microsoft YaHei" FontWeight="Normal"
+                      Title=""
+                      Height="640" Width="940" MinHeight="480" MinWidth="720"
+                      IsMaxRestoreButtonEnabled="True" IsMinButtonEnabled="True" TitleCaps="False" ShowIconOnTitleBar="False" Icon="../Resources/AppIcon.ico">
 
     <Controls:MetroWindow.WindowButtonCommands>
-        <Controls:WindowButtonCommands 
+        <Controls:WindowButtonCommands
+                                       Foreground="{DynamicResource FluentTextForeground}"
                                        LightCloseButtonStyle="{StaticResource MahApps.Metro.Styles.WindowButton.Close.Light.Win10}"
                                        DarkCloseButtonStyle="{StaticResource MahApps.Metro.Styles.WindowButton.Close.Dark.Win10}"/>
     </Controls:MetroWindow.WindowButtonCommands>
-    
-    <Controls:MetroWindow.RightWindowCommands>
-        <Controls:WindowCommands>
-            <Button x:Name="OpenProgramSettings"
-                    Click="OpenProgramSettings_Click"
-                    Content="{iconPacks:Material Settings, Width=18, Height=18}"
-                    ToolTip="Settings" />
 
-            <Button x:Name="OpenGithubProject"
-                    Visibility="Collapsed"
-                    Click="OpenGithubProject_Click"
-                    Content="{iconPacks:Material GithubFace, Width=20, Height=20}"
-                    ToolTip="Open the project page on GitHub" />
+    <Grid Background="{DynamicResource FluentWindowBackground}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-            <Button x:Name="OpenGithubReleases"
-                    Visibility="Collapsed"
-                    Click="OpenGithubReleases_Click"
-                    Content="{iconPacks:Material Download, Width=16, Height=16}"
-                    ToolTip="Open the releases page on GitHub" />
+        <!-- ==================== 左侧导航 ==================== -->
+        <Border Grid.Column="0" Background="{DynamicResource FluentCardBackground}" BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="16,18,16,10">
+                    <TextBlock x:Name="AppTitle" Text="GTA World聊天助手" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
 
-            <Button x:Name="OpenUCP"
-                    Visibility="Collapsed"
-                    Click="OpenUCP_Click"
-                    Content="{iconPacks:Material CardBulletedOutline, Width=20, Height=20}"
-                    ToolTip="Open the GTA World UCP" />
+                <StackPanel DockPanel.Dock="Bottom" Margin="16,10,16,16">
+                    <TextBlock x:Name="Version" FontSize="12" Foreground="{DynamicResource FluentSecondaryForeground}" TextAlignment="Center" Text="v6.0.0"/>
+                </StackPanel>
 
-            <Button x:Name="OpenFacebrowser"
-                    Visibility="Collapsed"
-                    Click="OpenFacebrowser_Click"
-                    Content="{iconPacks:Material FacebookBox, Width=16, Height=16}"
-                    ToolTip="Open Facebrowser" />
+                <StackPanel Margin="10,6,10,10">
+                    <Button x:Name="NavOverview" Click="NavOverview_Click" HorizontalContentAlignment="Left" Padding="10,9" Margin="0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="ViewDashboard" Width="16" Height="16" Foreground="{DynamicResource FluentTextForeground}"/>
+                            <TextBlock x:Name="NavOverviewText" Text="总览" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="NavChatLog" Click="NavChatLog_Click" HorizontalContentAlignment="Left" Padding="10,9" Margin="0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="MessageText" Width="16" Height="16" Foreground="{DynamicResource FluentTextForeground}"/>
+                            <TextBlock x:Name="NavChatLogText" Text="聊天日志" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="NavTranslation" Click="NavTranslation_Click" HorizontalContentAlignment="Left" Padding="10,9" Margin="0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="Translate" Width="16" Height="16" Foreground="{DynamicResource FluentTextForeground}"/>
+                            <TextBlock x:Name="NavTranslationText" Text="翻译" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="NavRealtimeLog" Click="NavRealtimeLog_Click" HorizontalContentAlignment="Left" Padding="10,9" Margin="0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="Pulse" Width="16" Height="16" Foreground="{DynamicResource FluentTextForeground}"/>
+                            <TextBlock x:Name="NavRealtimeLogText" Text="实时日志" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
-            <Button x:Name="OpenForums"
-                    Visibility="Collapsed"
-                    Click="OpenForums_Click"
-                    Content="{iconPacks:Material Web, Width=18, Height=18}"
-                    ToolTip="Open the GTA World forums" />
-        </Controls:WindowCommands>
-    </Controls:MetroWindow.RightWindowCommands>
+                    <Border Height="1" Background="{DynamicResource FluentBorderBrush}" Margin="6,10"/>
 
-    <DockPanel>
-        <Menu x:Name="MenuStrip" DockPanel.Dock="Top">
-            <MenuItem x:Name="CheckForUpdatesToolStripMenuItem" Header="Check For Updates" Click="CheckForUpdatesToolStripMenuItem_Click"/>
-            <MenuItem x:Name="BackupSettingsToolStripMenuItem" Header="Automatic Backup Settings" Click="BackupSettingsToolStripMenuItem_Click"/>
-            <MenuItem x:Name="FilterChatLogToolStripMenuItem" Header="Filter Chat Log" Click="FilterChatLogToolStripMenuItem_Click"/>
-            <MenuItem x:Name="LanguageToolStripMenuItem" Header="Change Server" Visibility="Collapsed"/>
-            <MenuItem x:Name="AboutToolStripMenuItem" Header="About" Click="AboutToolStripMenuItem_Click"/>
-            <MenuItem x:Name="ExitToolStripMenuItem" Header="Exit" Visibility="Hidden" Click="ExitToolStripMenuItem_Click"/>
-        </Menu>
+                    <Button x:Name="NavFilter" Click="NavFilter_Click" HorizontalContentAlignment="Left" Padding="10,9" Margin="0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="Filter" Width="16" Height="16" Foreground="{DynamicResource FluentTextForeground}"/>
+                            <TextBlock x:Name="NavFilterText" Text="过滤日志" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="NavSettings" Click="NavSettings_Click" HorizontalContentAlignment="Left" Padding="10,9" Margin="0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="Settings" Width="16" Height="16" Foreground="{DynamicResource FluentTextForeground}"/>
+                            <TextBlock x:Name="NavSettingsText" Text="设置" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="NavAbout" Click="NavAbout_Click" HorizontalContentAlignment="Left" Padding="10,9" Margin="0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="Information" Width="16" Height="16" Foreground="{DynamicResource FluentTextForeground}"/>
+                            <TextBlock x:Name="NavAboutText" Text="关于" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
 
-        <Grid>
-            <Image x:Name="Logo" HorizontalAlignment="Left" Height="140" VerticalAlignment="Top" Width="288" Source="../Resources/Logo.png" Margin="10,0,0,0" Stretch="Fill" MouseLeftButtonUp="Logo_MouseLeftButtonUp"/>
-            <CheckBox x:Name="CheckForUpdatesOnStartup" Checked="CheckForUpdatesOnStartup_CheckedChanged" Unchecked="CheckForUpdatesOnStartup_CheckedChanged" Content="Check for updates automatically" HorizontalAlignment="Left" Margin="10,145,0,0" VerticalAlignment="Top" Width="288"/>
-            <CheckBox x:Name="RemoveTimestamps" Checked="RemoveTimestamps_CheckedChanged" Unchecked="RemoveTimestamps_CheckedChanged" Content="Remove timestamps" HorizontalAlignment="Left" Margin="10,168,0,0" VerticalAlignment="Top" Width="288"/>
-            <Controls:ProgressRing x:Name="UpdateCheckProgress"
-                                   Width="16"
-                                   Height="16"
-                                   Foreground="Black"
-                                   IsActive="False"
-                                   HorizontalAlignment="Left"
-                                   VerticalAlignment="Top"
-                                   Visibility="Collapsed" Margin="210,145,0,0"/>
+        <!-- ==================== 右侧内容 ==================== -->
+        <Grid Grid.Column="1" Margin="28,20,28,20">
+            <!-- 总览页 -->
+            <Grid x:Name="OverviewPage" Visibility="Collapsed">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <TextBlock x:Name="OverviewTitle" Text="总览" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,16"/>
 
-            <TextBlock x:Name="Version" TextWrapping="NoWrap" Text="v1.0.0" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top" Width="75" Margin="549,5,0,0" Height="26"/>
-            <TextBox x:Name="Parsed" TextChanged="Parsed_TextChanged" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Visible" HorizontalAlignment="Left" Height="110" Margin="303,23,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="321" AcceptsReturn="True"/>
-            <Label x:Name="StatusLabel" Content="Automatic Backup: OFF" HorizontalContentAlignment="Left" HorizontalAlignment="Left" Margin="298,133,0,0" VerticalAlignment="Top" Width="160"/>
-            <TextBlock TextWrapping="NoWrap" x:Name="Counter" Text="0 characters and 0 lines" TextAlignment="Right" HorizontalAlignment="Left" Margin="463,138,0,0" VerticalAlignment="Top" Width="161" Height="26"/>
-            
-            <Button x:Name="Parse" Click="Parse_Click" Content="Parse" HorizontalAlignment="Left" Margin="303,159,0,0" VerticalAlignment="Top" Width="75"/>
-            <Button x:Name="SaveParsed" Click="SaveParsed_Click" Content="Save As" HorizontalAlignment="Left" Margin="383,159,0,0" VerticalAlignment="Top" Width="75"/>
-            <Button x:Name="CopyParsedToClipboard" Click="CopyParsedToClipboard_Click" Content="Copy To Clipboard" HorizontalAlignment="Left" Margin="463,159,0,0" VerticalAlignment="Top" Width="161"/>
+                        <UniformGrid Columns="2" Rows="2">
+                            <Border Background="{DynamicResource FluentCardBackground}" BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="22,18" Margin="0,0,10,10">
+                                <StackPanel>
+                                    <TextBlock x:Name="TotalTranslationsValue" Text="0" FontSize="30" FontWeight="SemiBold" Foreground="{DynamicResource FluentAccentBrush}"/>
+                                    <TextBlock x:Name="TotalTranslationsLabel" Text="累积翻译次数" FontSize="13" Foreground="{DynamicResource FluentSecondaryForeground}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{DynamicResource FluentCardBackground}" BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="22,18" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock x:Name="TotalCharactersValue" Text="0" FontSize="30" FontWeight="SemiBold" Foreground="{DynamicResource FluentAccentBrush}"/>
+                                    <TextBlock x:Name="TotalCharactersLabel" Text="词语翻译次数" FontSize="13" Foreground="{DynamicResource FluentSecondaryForeground}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{DynamicResource FluentCardBackground}" BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="22,18" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock x:Name="TotalApiCallsValue" Text="0" FontSize="30" FontWeight="SemiBold" Foreground="{DynamicResource FluentAccentBrush}"/>
+                                    <TextBlock x:Name="TotalApiCallsLabel" Text="API调用次数" FontSize="13" Foreground="{DynamicResource FluentSecondaryForeground}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{DynamicResource FluentCardBackground}" BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="22,18">
+                                <StackPanel>
+                                    <TextBlock x:Name="TotalTokensValue" Text="0" FontSize="30" FontWeight="SemiBold" Foreground="{DynamicResource FluentAccentBrush}"/>
+                                    <TextBlock x:Name="TotalTokensLabel" Text="Token消耗" FontSize="13" Foreground="{DynamicResource FluentSecondaryForeground}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <Border Background="{DynamicResource FluentCardBackground}" BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="22,18" Margin="0,10,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Button x:Name="TopWordsToggle" Click="TopWordsToggle_Click" Style="{StaticResource FluentTitleButton}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="TopWordsArrow" Text="▸" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource FluentSecondaryForeground}"/>
+                                        <TextBlock x:Name="TopWordsTitle" Text="翻译次数最多的单词" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <ItemsControl x:Name="TopWordsList" Grid.Row="1" Visibility="Collapsed" Margin="0,10,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Rank}" Foreground="{DynamicResource FluentSecondaryForeground}" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Word}" Foreground="{DynamicResource FluentTextForeground}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding Count}" Foreground="{DynamicResource FluentAccentBrush}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="{DynamicResource FluentCardBackground}" BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="22,18" Margin="0,10,0,0" MaxHeight="320">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="CacheToggleButton" Click="CacheToggleButton_Click" Style="{StaticResource FluentTitleButton}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock x:Name="CacheArrow" Text="▸" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource FluentSecondaryForeground}"/>
+                                            <TextBlock x:Name="CacheTitle" Text="翻译缓存" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock x:Name="CacheInfo" Grid.Column="1" Text="" FontSize="12" Foreground="{DynamicResource FluentSecondaryForeground}" VerticalAlignment="Center" Margin="14,0,0,0" TextTrimming="CharacterEllipsis"/>
+                                    <Button x:Name="RefreshCacheButton" Grid.Column="2" Content="刷新" FontSize="12" Padding="10,3" Margin="12,0,0,0" VerticalAlignment="Center" Click="RefreshCacheButton_Click"/>
+                                </Grid>
+                                <ListBox x:Name="CacheList" Grid.Row="1" Visibility="Collapsed" Margin="0,10,0,0" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,2">
+                                                <TextBlock Text="{Binding Source}" FontWeight="SemiBold" Foreground="{DynamicResource FluentTextForeground}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Translation}" FontSize="12" Foreground="{DynamicResource FluentSecondaryForeground}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- 聊天日志页 -->
+            <Grid x:Name="ChatLogPage">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="ChatLogTitle" Text="聊天日志" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,14"/>
+
+                <TextBox x:Name="Parsed" Grid.Row="1" Style="{StaticResource FluentChatTextBox}"
+                         TextChanged="Parsed_TextChanged"
+                         HorizontalScrollBarVisibility="Disabled"
+                         VerticalScrollBarVisibility="Visible"/>
+
+                <Grid Grid.Row="2" Margin="0,12,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="Parse" Style="{StaticResource FluentAccentButton}" Click="Parse_Click"/>
+                        <Button x:Name="SaveParsed" Click="SaveParsed_Click" Margin="8,0,0,0"/>
+                        <Button x:Name="CopyParsedToClipboard" Click="CopyParsedToClipboard_Click" Margin="8,0,0,0"/>
+                    </StackPanel>
+                    <TextBlock x:Name="Counter" HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Foreground="{DynamicResource FluentSecondaryForeground}" FontSize="12"/>
+                </Grid>
+
+                <Border Grid.Row="3" Height="1" Background="{DynamicResource FluentBorderBrush}" Margin="0,12,0,8"/>
+                <TextBlock x:Name="StatusLabel" Grid.Row="4" Foreground="{DynamicResource FluentSecondaryForeground}" FontSize="12"/>
+            </Grid>
+
+            <!-- 翻译页 -->
+            <ScrollViewer x:Name="TranslationPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,0,24,20">
+                    <TextBlock x:Name="TranslationTitle" Text="翻译" FontSize="24" FontWeight="SemiBold"/>
+
+                    <TextBlock x:Name="SectionGeneral" Style="{StaticResource FluentSectionHeader}" Text="常规"/>
+
+                    <CheckBox x:Name="TranslationEnabled" Margin="0,6,0,0"/>
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TargetLanguageLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="TargetLanguageList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SourceLanguageLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SourceLanguageList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationBulkHotkeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TranslationBulkHotkeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <CheckBox x:Name="AutoTranslateCheckBox" Margin="0,6,0,0"/>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="AutoTranslateHotkeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="AutoTranslateHotkeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <CheckBox x:Name="ShowGameToastsCheckBox" Margin="0,6,0,0"/>
+
+                    <TextBlock x:Name="SectionGameTranslation" Style="{StaticResource FluentSectionHeader}" Text="游戏功能翻译"/>
+
+                    <CheckBox x:Name="SettingsPageTranslationCheckBox" Margin="0,2,0,0"/>
+
+                    <TextBlock x:Name="SectionProvider" Style="{StaticResource FluentSectionHeader}" Text="翻译服务"/>
+
+                    <Grid Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationProviderLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="TranslationProviderList" Grid.Column="1" SelectionChanged="TranslationProviderList_SelectionChanged" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="DeepSeekApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DeepSeekApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="DeepSeekApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="DeepSeekModelRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DeepSeekModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="DeepSeekModelList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="DeepLApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DeepLApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="DeepLApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="DoubaoApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DoubaoApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="DoubaoApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="DoubaoModelRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DoubaoModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="DoubaoModelList" Grid.Column="1" IsEditable="True" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="ZoomApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="ZoomApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="ZoomApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationDisplayModeLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="TranslationDisplayModeList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="TranslationPromptRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationPromptLabel" Grid.Column="0" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                        <TextBox x:Name="TranslationPromptBox" Grid.Column="1" Height="60" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalAlignment="Top"/>
+                    </Grid>
+                    <Grid x:Name="TranslationStyleRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="TranslationStyleLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="TranslationStyleList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+
+                    <TextBlock x:Name="SectionSend" Style="{StaticResource FluentSectionHeader}" Text="发送翻译"/>
+
+                    <CheckBox x:Name="SendTranslationEnabled" Margin="0,2,0,0" Checked="SendTranslationEnabled_Changed" Unchecked="SendTranslationEnabled_Changed"/>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendSourceLanguageLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendSourceLanguageList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendTargetLanguageLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendTargetLanguageList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendTranslationKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="SendTranslationKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendProviderLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendProviderList" Grid.Column="1" SelectionChanged="SendProviderList_SelectionChanged" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="SendApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="SendApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="SendModelRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendModelList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="SendDeepLApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendDeepLApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="SendDeepLApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="SendDoubaoApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendDoubaoApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="SendDoubaoApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="SendDoubaoModelRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendDoubaoModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendDoubaoModelList" Grid.Column="1" IsEditable="True" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="SendZoomApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendZoomApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="SendZoomApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="SendPromptRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendPromptLabel" Grid.Column="0" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                        <TextBox x:Name="SendPromptBox" Grid.Column="1" Height="60" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalAlignment="Top"/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 实时日志页 -->
+            <Grid x:Name="RealtimeLogPage" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,16,0">
+                        <TextBlock x:Name="RealtimeLogTitle" Text="实时日志" FontSize="24" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="RealtimeLogHint" FontSize="12" Foreground="{DynamicResource FluentSecondaryForeground}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button x:Name="RefreshLogButton" Grid.Column="1" Content="刷新" FontSize="12" Padding="10,3" Margin="12,0,0,0" VerticalAlignment="Top" Click="RefreshLogButton_Click"/>
+                    <Button x:Name="ClearLogButton" Grid.Column="2" Content="清空" FontSize="12" Padding="10,3" Margin="8,0,0,0" VerticalAlignment="Top" Click="ClearLogButton_Click"/>
+                </Grid>
+                <TextBox x:Name="RealtimeLogBox" Grid.Row="1" IsReadOnly="True" TextWrapping="NoWrap"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                         FontFamily="Consolas" FontSize="12" Margin="0,14,0,0"
+                         Background="{DynamicResource FluentCardBackground}"
+                         Foreground="{DynamicResource FluentTextForeground}"
+                         BorderBrush="{DynamicResource FluentBorderBrush}"/>
+            </Grid>
         </Grid>
-    </DockPanel>
+    </Grid>
 </Controls:MetroWindow>
