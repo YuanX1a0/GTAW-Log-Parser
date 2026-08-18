@@ -200,6 +200,24 @@
     <Setting Name="SendDeepLApiKey" Type="System.String" Scope="User">
       <Value Profile="(Default)"></Value>
     </Setting>
+    <Setting Name="DoubaoApiKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)"></Value>
+    </Setting>
+    <Setting Name="DoubaoModel" Type="System.String" Scope="User">
+      <Value Profile="(Default)">doubao-seed-2.0-lite</Value>
+    </Setting>
+    <Setting Name="DoubaoFreeEndpoint" Type="System.String" Scope="User">
+      <Value Profile="(Default)">http://127.0.0.1:8791/v1/chat/completions</Value>
+    </Setting>
+    <Setting Name="SendDoubaoApiKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)"></Value>
+    </Setting>
+    <Setting Name="SendDoubaoModel" Type="System.String" Scope="User">
+      <Value Profile="(Default)">doubao-seed-2.0-lite</Value>
+    </Setting>
+    <Setting Name="SendDoubaoFreeEndpoint" Type="System.String" Scope="User">
+      <Value Profile="(Default)">http://127.0.0.1:8791/v1/chat/completions</Value>
+    </Setting>
     <Setting Name="SettingsPageTranslation" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>

@@ -1128,6 +1128,54 @@ namespace Assistant.Localization {
             }
         }
 
+        internal static string TranslationProviderDoubao {
+            get {
+                return ResourceManager.GetString("TranslationProviderDoubao", resourceCulture);
+            }
+        }
+
+        internal static string TranslationProviderDoubaoFree {
+            get {
+                return ResourceManager.GetString("TranslationProviderDoubaoFree", resourceCulture);
+            }
+        }
+
+        internal static string DoubaoApiKey {
+            get {
+                return ResourceManager.GetString("DoubaoApiKey", resourceCulture);
+            }
+        }
+
+        internal static string DoubaoModel {
+            get {
+                return ResourceManager.GetString("DoubaoModel", resourceCulture);
+            }
+        }
+
+        internal static string DoubaoFreeEndpoint {
+            get {
+                return ResourceManager.GetString("DoubaoFreeEndpoint", resourceCulture);
+            }
+        }
+
+        internal static string SendDoubaoApiKey {
+            get {
+                return ResourceManager.GetString("SendDoubaoApiKey", resourceCulture);
+            }
+        }
+
+        internal static string SendDoubaoModel {
+            get {
+                return ResourceManager.GetString("SendDoubaoModel", resourceCulture);
+            }
+        }
+
+        internal static string SendDoubaoFreeEndpoint {
+            get {
+                return ResourceManager.GetString("SendDoubaoFreeEndpoint", resourceCulture);
+            }
+        }
+
         internal static string SettingsPageTranslation {
             get {
                 return ResourceManager.GetString("SettingsPageTranslation", resourceCulture);

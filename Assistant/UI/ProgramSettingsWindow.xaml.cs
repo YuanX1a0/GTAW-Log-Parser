@@ -88,6 +88,9 @@ namespace Assistant.UI
             DeepSeekApiKeyLabel.Content = Strings.DeepSeekApiKey;
             DeepSeekModelLabel.Content = Strings.DeepSeekModel;
             DeepLApiKeyLabel.Content = Strings.DeepLApiKey;
+            DoubaoApiKeyLabel.Content = Strings.DoubaoApiKey;
+            DoubaoModelLabel.Content = Strings.DoubaoModel;
+            DoubaoFreeEndpointLabel.Content = Strings.DoubaoFreeEndpoint;
             TranslationDisplayModeLabel.Content = Strings.TranslationDisplayMode;
             TranslationPromptLabel.Content = Strings.TranslationPrompt;
             SendTranslationEnabled.Content = Strings.SendTranslationEnabled;
@@ -98,6 +101,9 @@ namespace Assistant.UI
             SendApiKeyLabel.Content = Strings.DeepSeekApiKey;
             SendModelLabel.Content = Strings.DeepSeekModel;
             SendDeepLApiKeyLabel.Content = Strings.SendDeepLApiKey;
+            SendDoubaoApiKeyLabel.Content = Strings.SendDoubaoApiKey;
+            SendDoubaoModelLabel.Content = Strings.SendDoubaoModel;
+            SendDoubaoFreeEndpointLabel.Content = Strings.SendDoubaoFreeEndpoint;
             SendPromptLabel.Content = Strings.TranslationPrompt;
             TranslationStyleLabel.Content = Strings.TranslationStyle;
 
@@ -136,8 +142,13 @@ namespace Assistant.UI
             Properties.Settings.Default.TranslationProvider = ProviderName(TranslationProviderList.SelectedIndex);
             Properties.Settings.Default.DeepSeekApiKey = DeepSeekApiKeyBox.Password;
             Properties.Settings.Default.DeepLApiKey = DeepLApiKeyBox.Password;
+            Properties.Settings.Default.DoubaoApiKey = DoubaoApiKeyBox.Password;
+            Properties.Settings.Default.DoubaoFreeEndpoint = (DoubaoFreeEndpointBox.Text ?? string.Empty).Trim();
             if (DeepSeekModelList.SelectedIndex >= 0)
                 Properties.Settings.Default.DeepSeekModel = DeepSeekModelList.SelectedItem.ToString();
+            Properties.Settings.Default.DoubaoModel = string.IsNullOrWhiteSpace(DoubaoModelList.Text)
+                ? "doubao-seed-2.0-lite"
+                : DoubaoModelList.Text.Trim();
             Properties.Settings.Default.TranslationDisplayMode = TranslationDisplayModeList.SelectedIndex == 1 ? "replace" : "append";
             Properties.Settings.Default.TranslationPrompt = TranslationPromptBox.Text;
             string bulkHotkey = (TranslationBulkHotkeyBox.Text ?? string.Empty).Trim();
@@ -153,8 +164,13 @@ namespace Assistant.UI
             Properties.Settings.Default.SendTranslationProvider = ProviderName(SendProviderList.SelectedIndex);
             Properties.Settings.Default.SendDeepSeekApiKey = SendApiKeyBox.Password;
             Properties.Settings.Default.SendDeepLApiKey = SendDeepLApiKeyBox.Password;
+            Properties.Settings.Default.SendDoubaoApiKey = SendDoubaoApiKeyBox.Password;
+            Properties.Settings.Default.SendDoubaoFreeEndpoint = (SendDoubaoFreeEndpointBox.Text ?? string.Empty).Trim();
             if (SendModelList.SelectedIndex >= 0)
                 Properties.Settings.Default.SendDeepSeekModel = SendModelList.SelectedItem.ToString();
+            Properties.Settings.Default.SendDoubaoModel = string.IsNullOrWhiteSpace(SendDoubaoModelList.Text)
+                ? "doubao-seed-2.0-lite"
+                : SendDoubaoModelList.Text.Trim();
             Properties.Settings.Default.SendTranslationPrompt = SendPromptBox.Text;
             Properties.Settings.Default.TranslationStyle = TranslationStyleList.SelectedIndex == 1 ? "formal" : TranslationStyleList.SelectedIndex == 2 ? "literary" : "casual";
 
@@ -198,7 +214,10 @@ namespace Assistant.UI
             TranslationProviderList.SelectedIndex = ProviderIndex(Properties.Settings.Default.TranslationProvider);
             DeepSeekApiKeyBox.Password = Properties.Settings.Default.DeepSeekApiKey;
             DeepLApiKeyBox.Password = Properties.Settings.Default.DeepLApiKey;
+            DoubaoApiKeyBox.Password = Properties.Settings.Default.DoubaoApiKey;
+            DoubaoFreeEndpointBox.Text = Properties.Settings.Default.DoubaoFreeEndpoint;
             SelectDeepSeekModel(Properties.Settings.Default.DeepSeekModel);
+            SelectDoubaoModel(Properties.Settings.Default.DoubaoModel);
             TranslationDisplayModeList.SelectedIndex = Properties.Settings.Default.TranslationDisplayMode == "replace" ? 1 : 0;
             TranslationPromptBox.Text = Properties.Settings.Default.TranslationPrompt;
             SendTranslationEnabled.IsChecked = Properties.Settings.Default.SendTranslationEnabled;
@@ -206,7 +225,10 @@ namespace Assistant.UI
             SendProviderList.SelectedIndex = ProviderIndex(Properties.Settings.Default.SendTranslationProvider);
             SendApiKeyBox.Password = Properties.Settings.Default.SendDeepSeekApiKey;
             SendDeepLApiKeyBox.Password = Properties.Settings.Default.SendDeepLApiKey;
+            SendDoubaoApiKeyBox.Password = Properties.Settings.Default.SendDoubaoApiKey;
+            SendDoubaoFreeEndpointBox.Text = Properties.Settings.Default.SendDoubaoFreeEndpoint;
             SelectSendModel(Properties.Settings.Default.SendDeepSeekModel);
+            SelectSendDoubaoModel(Properties.Settings.Default.SendDoubaoModel);
             SendPromptBox.Text = Properties.Settings.Default.SendTranslationPrompt;
             TranslationStyleList.SelectedIndex = "formal".Equals(Properties.Settings.Default.TranslationStyle) ? 1 : "literary".Equals(Properties.Settings.Default.TranslationStyle) ? 2 : 0;
             TranslationBulkHotkeyBox.Text = Properties.Settings.Default.TranslationBulkHotkey;
@@ -278,6 +300,8 @@ namespace Assistant.UI
             TranslationProviderList.Items.Add(Strings.TranslationProviderGoogle);
             TranslationProviderList.Items.Add(Strings.TranslationProviderDeepSeek);
             TranslationProviderList.Items.Add(Strings.TranslationProviderDeepL);
+            TranslationProviderList.Items.Add(Strings.TranslationProviderDoubao);
+            TranslationProviderList.Items.Add(Strings.TranslationProviderDoubaoFree);
 
             TranslationDisplayModeList.Items.Clear();
             TranslationDisplayModeList.Items.Add(Strings.TranslationDisplayAppend);
@@ -296,6 +320,8 @@ namespace Assistant.UI
             SendProviderList.Items.Add(Strings.TranslationProviderGoogle);
             SendProviderList.Items.Add(Strings.TranslationProviderDeepSeek);
             SendProviderList.Items.Add(Strings.TranslationProviderDeepL);
+            SendProviderList.Items.Add(Strings.TranslationProviderDoubao);
+            SendProviderList.Items.Add(Strings.TranslationProviderDoubaoFree);
 
             SendModelList.Items.Clear();
             foreach (string model in TranslationController.DeepSeekModels)
@@ -309,6 +335,58 @@ namespace Assistant.UI
             DeepSeekModelList.Items.Clear();
             foreach (string model in TranslationController.DeepSeekModels)
                 DeepSeekModelList.Items.Add(model);
+
+            DoubaoModelList.Items.Clear();
+            foreach (string model in TranslationController.DoubaoModels)
+                DoubaoModelList.Items.Add(model);
+
+            SendDoubaoModelList.Items.Clear();
+            foreach (string model in TranslationController.DoubaoModels)
+                SendDoubaoModelList.Items.Add(model);
+        }
+
+        /// <summary>
+        /// Selects the Doubao model matching the given name or endpoint ID.
+        /// The box is editable so any Ark inference endpoint ID also works.
+        /// </summary>
+        /// <param name="model"></param>
+        private void SelectDoubaoModel(string model)
+        {
+            int index = -1;
+            for (int i = 0; i < TranslationController.DoubaoModels.Length; ++i)
+            {
+                if (string.Equals(TranslationController.DoubaoModels[i], model, StringComparison.OrdinalIgnoreCase))
+                {
+                    index = i;
+                    break;
+                }
+            }
+            if (index >= 0)
+                DoubaoModelList.SelectedIndex = index;
+            else
+                DoubaoModelList.Text = string.IsNullOrWhiteSpace(model) ? "doubao-seed-2.0-lite" : model;
+        }
+
+        /// <summary>
+        /// Selects the send translation Doubao model matching the given name
+        /// or endpoint ID (the box is editable).
+        /// </summary>
+        /// <param name="model"></param>
+        private void SelectSendDoubaoModel(string model)
+        {
+            int index = -1;
+            for (int i = 0; i < TranslationController.DoubaoModels.Length; ++i)
+            {
+                if (string.Equals(TranslationController.DoubaoModels[i], model, StringComparison.OrdinalIgnoreCase))
+                {
+                    index = i;
+                    break;
+                }
+            }
+            if (index >= 0)
+                SendDoubaoModelList.SelectedIndex = index;
+            else
+                SendDoubaoModelList.Text = string.IsNullOrWhiteSpace(model) ? "doubao-seed-2.0-lite" : model;
         }
 
         /// <summary>
@@ -332,7 +410,7 @@ namespace Assistant.UI
 
         /// <summary>
         /// Maps a translation provider name to its combo box index
-        /// (0 = Google, 1 = DeepSeek, 2 = DeepL)
+        /// (0 = Google, 1 = DeepSeek, 2 = DeepL, 3 = Doubao, 4 = DoubaoFree)
         /// </summary>
         private static int ProviderIndex(string provider)
         {
@@ -340,6 +418,10 @@ namespace Assistant.UI
                 return 1;
             if (string.Equals(provider, "DeepL", StringComparison.OrdinalIgnoreCase))
                 return 2;
+            if (string.Equals(provider, "Doubao", StringComparison.OrdinalIgnoreCase))
+                return 3;
+            if (string.Equals(provider, "DoubaoFree", StringComparison.OrdinalIgnoreCase))
+                return 4;
             return 0;
         }
 
@@ -352,6 +434,10 @@ namespace Assistant.UI
                 return "DeepSeek";
             if (index == 2)
                 return "DeepL";
+            if (index == 3)
+                return "Doubao";
+            if (index == 4)
+                return "DoubaoFree";
             return "Google";
         }
 
@@ -364,14 +450,22 @@ namespace Assistant.UI
             int index = TranslationProviderList.SelectedIndex;
             bool deepSeek = index == 1;
             bool deepL = index == 2;
+            bool doubao = index == 3;
+            bool doubaoFree = index == 4;
             DeepSeekApiKeyLabel.IsEnabled = deepSeek;
             DeepSeekApiKeyBox.IsEnabled = deepSeek;
             DeepSeekModelLabel.IsEnabled = deepSeek;
             DeepSeekModelList.IsEnabled = deepSeek;
-            TranslationPromptLabel.IsEnabled = deepSeek;
-            TranslationPromptBox.IsEnabled = deepSeek;
+            TranslationPromptLabel.IsEnabled = deepSeek || doubao || doubaoFree;
+            TranslationPromptBox.IsEnabled = deepSeek || doubao || doubaoFree;
             DeepLApiKeyLabel.IsEnabled = deepL;
             DeepLApiKeyBox.IsEnabled = deepL;
+            DoubaoApiKeyLabel.IsEnabled = doubao;
+            DoubaoApiKeyBox.IsEnabled = doubao;
+            DoubaoModelLabel.IsEnabled = doubao;
+            DoubaoModelList.IsEnabled = doubao;
+            DoubaoFreeEndpointLabel.IsEnabled = doubaoFree;
+            DoubaoFreeEndpointBox.IsEnabled = doubaoFree;
         }
 
         /// <summary>
@@ -412,14 +506,22 @@ namespace Assistant.UI
             int index = SendProviderList.SelectedIndex;
             bool deepSeek = index == 1;
             bool deepL = index == 2;
+            bool doubao = index == 3;
+            bool doubaoFree = index == 4;
             SendApiKeyLabel.IsEnabled = deepSeek;
             SendApiKeyBox.IsEnabled = deepSeek;
             SendModelLabel.IsEnabled = deepSeek;
             SendModelList.IsEnabled = deepSeek;
-            SendPromptLabel.IsEnabled = deepSeek;
-            SendPromptBox.IsEnabled = deepSeek;
+            SendPromptLabel.IsEnabled = deepSeek || doubao || doubaoFree;
+            SendPromptBox.IsEnabled = deepSeek || doubao || doubaoFree;
             SendDeepLApiKeyLabel.IsEnabled = deepL;
             SendDeepLApiKeyBox.IsEnabled = deepL;
+            SendDoubaoApiKeyLabel.IsEnabled = doubao;
+            SendDoubaoApiKeyBox.IsEnabled = doubao;
+            SendDoubaoModelLabel.IsEnabled = doubao;
+            SendDoubaoModelList.IsEnabled = doubao;
+            SendDoubaoFreeEndpointLabel.IsEnabled = doubaoFree;
+            SendDoubaoFreeEndpointBox.IsEnabled = doubaoFree;
         }
 
         /// <summary>
@@ -572,6 +674,9 @@ namespace Assistant.UI
             Properties.Settings.Default.DeepSeekApiKey = string.Empty;
             Properties.Settings.Default.DeepLApiKey = string.Empty;
             Properties.Settings.Default.DeepSeekModel = "deepseek-v4-flash";
+            Properties.Settings.Default.DoubaoApiKey = string.Empty;
+            Properties.Settings.Default.DoubaoModel = "doubao-seed-2.0-lite";
+            Properties.Settings.Default.DoubaoFreeEndpoint = "http://127.0.0.1:8791/v1/chat/completions";
             Properties.Settings.Default.TranslationDisplayMode = "append";
             Properties.Settings.Default.TranslationPrompt = string.Empty;
             Properties.Settings.Default.SendTranslationEnabled = false;
@@ -580,6 +685,9 @@ namespace Assistant.UI
             Properties.Settings.Default.SendDeepSeekApiKey = string.Empty;
             Properties.Settings.Default.SendDeepLApiKey = string.Empty;
             Properties.Settings.Default.SendDeepSeekModel = "deepseek-v4-flash";
+            Properties.Settings.Default.SendDoubaoApiKey = string.Empty;
+            Properties.Settings.Default.SendDoubaoModel = "doubao-seed-2.0-lite";
+            Properties.Settings.Default.SendDoubaoFreeEndpoint = "http://127.0.0.1:8791/v1/chat/completions";
             Properties.Settings.Default.SendTranslationPrompt = string.Empty;
             Properties.Settings.Default.TranslationStyle = "casual";
             Properties.Settings.Default.TranslationBulkHotkey = "Ctrl+F9";

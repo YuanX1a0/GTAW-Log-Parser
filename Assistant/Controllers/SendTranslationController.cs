@@ -226,9 +226,30 @@ namespace Assistant.Controllers
             string prefix;
             string body = SplitNamePrefix(text, out prefix);
             string translated;
-            string apiKey = string.Equals(Properties.Settings.Default.SendTranslationProvider, "DeepL", StringComparison.OrdinalIgnoreCase)
-                ? Properties.Settings.Default.SendDeepLApiKey
-                : Properties.Settings.Default.SendDeepSeekApiKey;
+            string provider = Properties.Settings.Default.SendTranslationProvider;
+            string apiKey;
+            string model;
+            if (string.Equals(provider, "DeepL", StringComparison.OrdinalIgnoreCase))
+            {
+                apiKey = Properties.Settings.Default.SendDeepLApiKey;
+                model = Properties.Settings.Default.SendDeepSeekModel;
+            }
+            else if (string.Equals(provider, "Doubao", StringComparison.OrdinalIgnoreCase))
+            {
+                apiKey = Properties.Settings.Default.SendDoubaoApiKey;
+                model = Properties.Settings.Default.SendDoubaoModel;
+            }
+            else if (string.Equals(provider, "DoubaoFree", StringComparison.OrdinalIgnoreCase))
+            {
+                // DoubaoFree needs no API key; the endpoint URL is passed through
+                apiKey = Properties.Settings.Default.SendDoubaoFreeEndpoint;
+                model = Properties.Settings.Default.SendDoubaoModel;
+            }
+            else
+            {
+                apiKey = Properties.Settings.Default.SendDeepSeekApiKey;
+                model = Properties.Settings.Default.SendDeepSeekModel;
+            }
             try
             {
                 translated = TranslationController.Translate(
@@ -237,7 +258,7 @@ namespace Assistant.Controllers
                     Properties.Settings.Default.SendSourceLanguage,
                     Properties.Settings.Default.SendTranslationProvider,
                     apiKey,
-                    Properties.Settings.Default.SendDeepSeekModel,
+                    model,
                     Properties.Settings.Default.SendTranslationPrompt,
                     Properties.Settings.Default.TranslationStyle);
             }

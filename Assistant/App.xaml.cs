@@ -125,6 +125,7 @@ namespace Assistant
             BackupController.Quitting = true;
             SendTranslationController.Stop();
             FiveMChatCaptureController.Stop();
+            TranslationController.FlushCache();
         }
     }
 }

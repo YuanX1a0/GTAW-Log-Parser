@@ -276,9 +276,30 @@ namespace Assistant.Controllers
             List<int> translateIndexes = new List<int>();
             StringBuilder combined = new StringBuilder();
             bool bodyStarted = false;
-            string apiKey = string.Equals(Properties.Settings.Default.TranslationProvider, "DeepL", StringComparison.OrdinalIgnoreCase)
-                ? Properties.Settings.Default.DeepLApiKey
-                : Properties.Settings.Default.DeepSeekApiKey;
+            string provider = Properties.Settings.Default.TranslationProvider;
+            string apiKey;
+            string model;
+            if (string.Equals(provider, "DeepL", StringComparison.OrdinalIgnoreCase))
+            {
+                apiKey = Properties.Settings.Default.DeepLApiKey;
+                model = Properties.Settings.Default.DeepSeekModel;
+            }
+            else if (string.Equals(provider, "Doubao", StringComparison.OrdinalIgnoreCase))
+            {
+                apiKey = Properties.Settings.Default.DoubaoApiKey;
+                model = Properties.Settings.Default.DoubaoModel;
+            }
+            else if (string.Equals(provider, "DoubaoFree", StringComparison.OrdinalIgnoreCase))
+            {
+                // DoubaoFree needs no API key; the endpoint URL is passed through
+                apiKey = Properties.Settings.Default.DoubaoFreeEndpoint;
+                model = Properties.Settings.Default.DoubaoModel;
+            }
+            else
+            {
+                apiKey = Properties.Settings.Default.DeepSeekApiKey;
+                model = Properties.Settings.Default.DeepSeekModel;
+            }
 
             for (int i = 0; i < segments.Count; i++)
             {
@@ -308,7 +329,7 @@ namespace Assistant.Controllers
                         "auto",
                         Properties.Settings.Default.TranslationProvider,
                         apiKey,
-                        Properties.Settings.Default.DeepSeekModel,
+                        model,
                         Properties.Settings.Default.TranslationPrompt,
                         Properties.Settings.Default.TranslationStyle);
                     translatedLines = translated.Split('\n');
@@ -346,7 +367,7 @@ namespace Assistant.Controllers
                                 "auto",
                                 Properties.Settings.Default.TranslationProvider,
                                 apiKey,
-                                Properties.Settings.Default.DeepSeekModel,
+                                model,
                                 Properties.Settings.Default.TranslationPrompt,
                                 Properties.Settings.Default.TranslationStyle);
                         }

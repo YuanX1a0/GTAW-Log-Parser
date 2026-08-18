@@ -132,6 +132,30 @@
                             <ColumnDefinition Width="150"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
+                        <Label x:Name="DoubaoApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="DoubaoApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DoubaoModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="DoubaoModelList" Grid.Column="1" IsEditable="True" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DoubaoFreeEndpointLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="DoubaoFreeEndpointBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
                         <Label x:Name="TranslationDisplayModeLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="TranslationDisplayModeList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
                     </Grid>
@@ -199,6 +223,30 @@
                         </Grid.ColumnDefinitions>
                         <Label x:Name="SendDeepLApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <PasswordBox x:Name="SendDeepLApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendDoubaoApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="SendDoubaoApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendDoubaoModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendDoubaoModelList" Grid.Column="1" IsEditable="True" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendDoubaoFreeEndpointLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="SendDoubaoFreeEndpointBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
                     </Grid>
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>

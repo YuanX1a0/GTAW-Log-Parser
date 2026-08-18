@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Web.Script.Serialization;
 
 namespace Assistant.Controllers
@@ -18,6 +19,8 @@ namespace Assistant.Controllers
         private const string DeepSeekChatUrl = "https://api.deepseek.com/v1/chat/completions";
         private const string DeepLFreeApiUrl = "https://api-free.deepl.com/v2/translate";
         private const string DeepLProApiUrl = "https://api.deepl.com/v2/translate";
+        private const string DoubaoChatUrl = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+        private const string DoubaoFreeChatUrl = "http://127.0.0.1:8791/v1/chat/completions";
 
         static TranslationController()
         {
@@ -27,6 +30,65 @@ namespace Assistant.Controllers
             // Allow more concurrent connections per host so the parallel translation
             // workers are not serialised on the default limit of 2.
             ServicePointManager.DefaultConnectionLimit = 8;
+            // Load the on-disk translation cache so repeated chat lines (e.g. "on my
+            // way") are answered from disk instead of burning API quota again.
+            try
+            {
+                if (File.Exists(CacheFilePath))
+                {
+                    string json = File.ReadAllText(CacheFilePath, Encoding.UTF8);
+                    Dictionary<string, string> saved = new JavaScriptSerializer().Deserialize<Dictionary<string, string>>(json);
+                    if (saved != null)
+                    {
+                        lock (CacheLock)
+                        {
+                            foreach (KeyValuePair<string, string> entry in saved)
+                            {
+                                if (TranslationCache.Count >= MaxCacheEntries)
+                                    break;
+                                TranslationCache[entry.Key] = entry.Value;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { /* corrupt or missing cache file is not fatal */ }
+            CacheFlushTimer = new Timer(FlushCacheTimerCallback, null, 3000, 3000);
+        }
+
+        private static void FlushCacheTimerCallback(object state)
+        {
+            try
+            {
+                lock (CacheSaveLock)
+                {
+                    if (!cacheDirty)
+                        return;
+                    cacheDirty = false;
+                }
+                Dictionary<string, string> snapshot;
+                lock (CacheLock)
+                {
+                    snapshot = new Dictionary<string, string>(TranslationCache);
+                }
+                Directory.CreateDirectory(CacheFileDirectory);
+                string json = new JavaScriptSerializer().Serialize(snapshot);
+                File.WriteAllText(CacheFilePath, json, new UTF8Encoding(false));
+            }
+            catch { /* never let cache persistence break translation */ }
+        }
+
+        /// <summary>
+        /// Flushes any pending cached translations to disk immediately.
+        /// Called on application shutdown so nothing is lost.
+        /// </summary>
+        public static void FlushCache()
+        {
+            lock (CacheSaveLock)
+            {
+                cacheDirty = true;
+            }
+            FlushCacheTimerCallback(null);
         }
 
         private static readonly Regex ProtectedPattern = new Regex(@"\[\d{1,2}:\d{2}(?::\d{2})?\]|https?://\S+|[()\[\]]");
@@ -48,7 +110,12 @@ namespace Assistant.Controllers
 
         private static readonly object CacheLock = new object();
         private static readonly Dictionary<string, string> TranslationCache = new Dictionary<string, string>(StringComparer.Ordinal);
-        private const int MaxCacheEntries = 500;
+        private const int MaxCacheEntries = 5000;
+        private static readonly string CacheFileDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GTAW-Log-Parser");
+        private static readonly string CacheFilePath = Path.Combine(CacheFileDirectory, "translation-cache.json");
+        private static readonly object CacheSaveLock = new object();
+        private static bool cacheDirty;
+        private static readonly Timer CacheFlushTimer;
 
         private static string GetCachedTranslation(string key)
         {
@@ -66,8 +133,22 @@ namespace Assistant.Controllers
             lock (CacheLock)
             {
                 if (TranslationCache.Count >= MaxCacheEntries)
-                    TranslationCache.Clear();
+                {
+                    // Evict the oldest ~20% of entries instead of wiping the whole
+                    // cache, so frequently used translations survive cache pressure.
+                    int removeCount = TranslationCache.Count / 5;
+                    foreach (string oldKey in new List<string>(TranslationCache.Keys))
+                    {
+                        if (removeCount-- <= 0)
+                            break;
+                        TranslationCache.Remove(oldKey);
+                    }
+                }
                 TranslationCache[key] = value;
+            }
+            lock (CacheSaveLock)
+            {
+                cacheDirty = true;
             }
         }
 
@@ -95,6 +176,18 @@ namespace Assistant.Controllers
         {
             "deepseek-v4-flash",
             "deepseek-v4-pro"
+        };
+
+        /// <summary>
+        /// Doubao models selectable in the program settings. Volcano Ark accepts
+        /// either a public model ID or an inference endpoint ID (ep-...) created
+        /// in the Ark console; the model box is editable so you can type either.
+        /// </summary>
+        public static readonly string[] DoubaoModels = new[]
+        {
+            "doubao-seed-2.0-lite",
+            "doubao-seed-2.0-mini",
+            "doubao-seed-2.0-pro"
         };
 
         public static string GetLanguageDisplayName(string code)
@@ -136,6 +229,10 @@ namespace Assistant.Controllers
                 result = TranslateWithDeepSeek(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
             else if (string.Equals(provider, "DeepL", StringComparison.OrdinalIgnoreCase))
                 result = TranslateWithDeepL(text, targetLanguage, sourceLanguage, apiKey);
+            else if (string.Equals(provider, "Doubao", StringComparison.OrdinalIgnoreCase))
+                result = TranslateWithDoubao(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+            else if (string.Equals(provider, "DoubaoFree", StringComparison.OrdinalIgnoreCase))
+                result = TranslateWithDoubaoFree(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
             else
                 result = Translate(text, targetLanguage, sourceLanguage);
 
@@ -292,6 +389,105 @@ namespace Assistant.Controllers
             if (string.IsNullOrEmpty(translated))
                 return text;
 
+            return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
+        }
+
+        /// <summary>
+        /// Translates the text using the Doubao (Volcano Ark) API.
+        /// The endpoint is OpenAI-compatible; new Ark users get free tokens
+        /// (up to 500k per model) so chat translation is effectively free.
+        /// </summary>
+        public static string TranslateWithDoubao(string text, string targetLanguage, string sourceLanguage, string apiKey, string model, string prompt)
+        {
+            return TranslateWithDoubao(text, targetLanguage, sourceLanguage, apiKey, model, prompt, "casual");
+        }
+
+        /// <summary>
+        /// Translates the text using the Doubao (Volcano Ark) API with a style.
+        /// </summary>
+        public static string TranslateWithDoubao(string text, string targetLanguage, string sourceLanguage, string apiKey, string model, string prompt, string style)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return string.Empty;
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("Doubao API key is missing.");
+            if (string.IsNullOrWhiteSpace(model))
+                model = "doubao-seed-2.0-lite";
+            return PostOpenAiCompatible(DoubaoChatUrl, text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+        }
+
+        /// <summary>
+        /// Translates the text using a free reverse-engineered Doubao web
+        /// endpoint (OpenAI-compatible, e.g. a local doubao-free-api proxy).
+        /// No API key is needed; the "apiKey" parameter holds the service URL
+        /// (defaults to the local doubao-free-api endpoint when empty).
+        /// </summary>
+        public static string TranslateWithDoubaoFree(string text, string targetLanguage, string sourceLanguage, string endpointUrl, string model, string prompt, string style)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return string.Empty;
+            if (string.IsNullOrWhiteSpace(endpointUrl))
+                endpointUrl = DoubaoFreeChatUrl;
+            if (string.IsNullOrWhiteSpace(model))
+                model = "doubao-seed-2.0-lite";
+            return PostOpenAiCompatible(endpointUrl, text, targetLanguage, sourceLanguage, null, model, prompt, style);
+        }
+
+        /// <summary>
+        /// Posts a chat completion request to any OpenAI-compatible endpoint
+        /// (DeepSeek, Doubao/Ark, free reverse proxies) and returns the
+        /// translation with protected tokens restored.
+        /// </summary>
+        private static string PostOpenAiCompatible(string url, string text, string targetLanguage, string sourceLanguage, string apiKey, string model, string prompt, string style)
+        {
+            List<string> protectedTokens = new List<string>();
+            string protectedText = ProtectTokens(text, protectedTokens);
+
+            string languageName = GetLanguageDisplayName(targetLanguage);
+            string sourceNote = string.IsNullOrWhiteSpace(sourceLanguage)
+                ? "Detect the source language automatically."
+                : "The source language is " + GetLanguageDisplayName(sourceLanguage) + " (" + sourceLanguage + ").";
+            string styleNote = "casual".Equals(style, StringComparison.OrdinalIgnoreCase)
+                ? "Use a casual, conversational tone."
+                : "formal".Equals(style, StringComparison.OrdinalIgnoreCase)
+                    ? "Use a formal, polite and proper tone."
+                    : "Use a literary, written and refined tone.";
+            string systemPrompt = "You are a chat translator. " + sourceNote + " Translate the user's message into " + languageName + " (" + targetLanguage + "). Output only the translation without any explanations or quotes. Never translate or alter the GTB placeholder tokens. Never translate proper names, player names, place names, brand names, group names or common abbreviations (e.g. OOC, LFG, EMS, SASP); keep them exactly as written. Keep the overall meaning and tone of the original message. " + styleNote;
+            if (!string.IsNullOrWhiteSpace(prompt))
+                systemPrompt += " " + prompt.Trim();
+            string payload = new JavaScriptSerializer().Serialize(new Dictionary<string, object>
+            {
+                { "model", model },
+                { "messages", new object[]
+                    {
+                        new Dictionary<string, object> { { "role", "system" }, { "content", systemPrompt } },
+                        new Dictionary<string, object> { { "role", "user" }, { "content", protectedText } }
+                    }
+                },
+                { "temperature", 0.3 },
+                { "stream", false },
+                { "max_tokens", 4096 }
+            });
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.UserAgent = "Mozilla/5.0";
+            request.Timeout = 30000;
+            if (!string.IsNullOrWhiteSpace(apiKey))
+                request.Headers["Authorization"] = "Bearer " + apiKey;
+
+            byte[] body = Encoding.UTF8.GetBytes(payload);
+            using (Stream requestStream = request.GetRequestStream())
+                requestStream.Write(body, 0, body.Length);
+
+            string responseJson;
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            using (Stream stream = response.GetResponseStream())
+            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                responseJson = reader.ReadToEnd();
+
+            string translated = ParseDeepSeekResponse(responseJson);
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
         }
 

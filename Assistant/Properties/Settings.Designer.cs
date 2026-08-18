@@ -814,6 +814,78 @@ namespace Assistant.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string DoubaoApiKey {
+            get {
+                return ((string)(this["DoubaoApiKey"]));
+            }
+            set {
+                this["DoubaoApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("doubao-seed-2.0-lite")]
+        public string DoubaoModel {
+            get {
+                return ((string)(this["DoubaoModel"]));
+            }
+            set {
+                this["DoubaoModel"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("http://127.0.0.1:8791/v1/chat/completions")]
+        public string DoubaoFreeEndpoint {
+            get {
+                return ((string)(this["DoubaoFreeEndpoint"]));
+            }
+            set {
+                this["DoubaoFreeEndpoint"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendDoubaoApiKey {
+            get {
+                return ((string)(this["SendDoubaoApiKey"]));
+            }
+            set {
+                this["SendDoubaoApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("doubao-seed-2.0-lite")]
+        public string SendDoubaoModel {
+            get {
+                return ((string)(this["SendDoubaoModel"]));
+            }
+            set {
+                this["SendDoubaoModel"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("http://127.0.0.1:8791/v1/chat/completions")]
+        public string SendDoubaoFreeEndpoint {
+            get {
+                return ((string)(this["SendDoubaoFreeEndpoint"]));
+            }
+            set {
+                this["SendDoubaoFreeEndpoint"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool SettingsPageTranslation {
             get {
