@@ -1,4 +1,4 @@
-﻿<Controls:MetroWindow x:Name="ProgramSettings" x:Class="Assistant.UI.ProgramSettingsWindow"
+<Controls:MetroWindow x:Name="ProgramSettings" x:Class="Assistant.UI.ProgramSettingsWindow"
                       xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
                       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                       xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
@@ -93,6 +93,8 @@
                         <Label x:Name="AutoTranslateHotkeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <TextBox x:Name="AutoTranslateHotkeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
                     </Grid>
+                    <CheckBox x:Name="ShowGameToastsCheckBox" Margin="0,6,0,0"/>
+                    <CheckBox x:Name="SettingsPageTranslationCheckBox" Margin="0,6,0,0"/>
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="150"/>
@@ -116,6 +118,14 @@
                         </Grid.ColumnDefinitions>
                         <Label x:Name="DeepSeekModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="DeepSeekModelList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DeepLApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="DeepLApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
                     </Grid>
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
@@ -181,6 +191,14 @@
                         </Grid.ColumnDefinitions>
                         <Label x:Name="SendModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="SendModelList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
+                    </Grid>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendDeepLApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="SendDeepLApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="240"/>
                     </Grid>
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>

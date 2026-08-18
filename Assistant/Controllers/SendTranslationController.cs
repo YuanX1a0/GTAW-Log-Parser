@@ -59,7 +59,12 @@ namespace Assistant.Controllers
                     {
                         lock (SyncRoot)
                         {
-                            Reader.InstallSendHook(Properties.Settings.Default.SendTranslationHotkey);
+                            Reader.InstallSendHook(
+                                Properties.Settings.Default.SendTranslationHotkey,
+                                Strings.ToastPrefix,
+                                Strings.ToastTranslatorOn,
+                                Strings.ToastTranslatorOff,
+                                Properties.Settings.Default.ShowGameToasts);
                             hookInstalled = true;
                             ProcessTranslator();
                         }
@@ -221,6 +226,9 @@ namespace Assistant.Controllers
             string prefix;
             string body = SplitNamePrefix(text, out prefix);
             string translated;
+            string apiKey = string.Equals(Properties.Settings.Default.SendTranslationProvider, "DeepL", StringComparison.OrdinalIgnoreCase)
+                ? Properties.Settings.Default.SendDeepLApiKey
+                : Properties.Settings.Default.SendDeepSeekApiKey;
             try
             {
                 translated = TranslationController.Translate(
@@ -228,7 +236,7 @@ namespace Assistant.Controllers
                     Properties.Settings.Default.SendTargetLanguage,
                     Properties.Settings.Default.SendSourceLanguage,
                     Properties.Settings.Default.SendTranslationProvider,
-                    Properties.Settings.Default.SendDeepSeekApiKey,
+                    apiKey,
                     Properties.Settings.Default.SendDeepSeekModel,
                     Properties.Settings.Default.SendTranslationPrompt,
                     Properties.Settings.Default.TranslationStyle);

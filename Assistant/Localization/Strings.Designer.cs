@@ -1068,6 +1068,72 @@ namespace Assistant.Localization {
             }
         }
 
+        internal static string ShowGameToasts {
+            get {
+                return ResourceManager.GetString("ShowGameToasts", resourceCulture);
+            }
+        }
+
+        internal static string ToastPrefix {
+            get {
+                return ResourceManager.GetString("ToastPrefix", resourceCulture);
+            }
+        }
+
+        internal static string ToastTranslatorOn {
+            get {
+                return ResourceManager.GetString("ToastTranslatorOn", resourceCulture);
+            }
+        }
+
+        internal static string ToastTranslatorOff {
+            get {
+                return ResourceManager.GetString("ToastTranslatorOff", resourceCulture);
+            }
+        }
+
+        internal static string ToastAutoOn {
+            get {
+                return ResourceManager.GetString("ToastAutoOn", resourceCulture);
+            }
+        }
+
+        internal static string ToastAutoOff {
+            get {
+                return ResourceManager.GetString("ToastAutoOff", resourceCulture);
+            }
+        }
+
+        internal static string ToastBulkDone {
+            get {
+                return ResourceManager.GetString("ToastBulkDone", resourceCulture);
+            }
+        }
+
+        internal static string TranslationProviderDeepL {
+            get {
+                return ResourceManager.GetString("TranslationProviderDeepL", resourceCulture);
+            }
+        }
+
+        internal static string DeepLApiKey {
+            get {
+                return ResourceManager.GetString("DeepLApiKey", resourceCulture);
+            }
+        }
+
+        internal static string SendDeepLApiKey {
+            get {
+                return ResourceManager.GetString("SendDeepLApiKey", resourceCulture);
+            }
+        }
+
+        internal static string SettingsPageTranslation {
+            get {
+                return ResourceManager.GetString("SettingsPageTranslation", resourceCulture);
+            }
+        }
+
         internal static string SourceLanguage {
             get {
                 return ResourceManager.GetString("SourceLanguage", resourceCulture);

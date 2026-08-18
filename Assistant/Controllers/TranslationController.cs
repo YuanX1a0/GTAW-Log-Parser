@@ -16,6 +16,18 @@ namespace Assistant.Controllers
     {
         private const string GoogleTranslateUrl = "https://translate.googleapis.com/translate_a/single?client=gtx&sl={0}&tl={1}&dt=t&q={2}";
         private const string DeepSeekChatUrl = "https://api.deepseek.com/v1/chat/completions";
+        private const string DeepLFreeApiUrl = "https://api-free.deepl.com/v2/translate";
+        private const string DeepLProApiUrl = "https://api.deepl.com/v2/translate";
+
+        static TranslationController()
+        {
+            // Force TLS 1.2 (required by DeepSeek / DeepL; without it every request
+            // falls back through old protocols and stalls several seconds).
+            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+            // Allow more concurrent connections per host so the parallel translation
+            // workers are not serialised on the default limit of 2.
+            ServicePointManager.DefaultConnectionLimit = 8;
+        }
 
         private static readonly Regex ProtectedPattern = new Regex(@"\[\d{1,2}:\d{2}(?::\d{2})?\]|https?://\S+|[()\[\]]");
 
@@ -122,6 +134,8 @@ namespace Assistant.Controllers
             string result;
             if (string.Equals(provider, "DeepSeek", StringComparison.OrdinalIgnoreCase))
                 result = TranslateWithDeepSeek(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+            else if (string.Equals(provider, "DeepL", StringComparison.OrdinalIgnoreCase))
+                result = TranslateWithDeepL(text, targetLanguage, sourceLanguage, apiKey);
             else
                 result = Translate(text, targetLanguage, sourceLanguage);
 
@@ -213,7 +227,8 @@ namespace Assistant.Controllers
                     }
                 },
                 { "temperature", 0.3 },
-                { "stream", false }
+                { "stream", false },
+                { "max_tokens", 4096 }
             });
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(DeepSeekChatUrl);
@@ -235,6 +250,124 @@ namespace Assistant.Controllers
 
             string translated = ParseDeepSeekResponse(responseJson);
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
+        }
+
+        /// <summary>
+        /// Translates the text using the DeepL API.
+        /// The free endpoint is tried first, then the pro endpoint for paid keys.
+        /// </summary>
+        public static string TranslateWithDeepL(string text, string targetLanguage, string sourceLanguage, string apiKey)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return string.Empty;
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("DeepL API key is missing.");
+
+            List<string> protectedTokens = new List<string>();
+            string protectedText = ProtectTokens(text, protectedTokens);
+
+            string target = DeepLTargetLanguage(targetLanguage);
+            string source = (string.IsNullOrWhiteSpace(sourceLanguage) || string.Equals(sourceLanguage, "auto", StringComparison.OrdinalIgnoreCase))
+                ? null
+                : DeepLSourceLanguage(sourceLanguage);
+
+            Dictionary<string, object> payload = new Dictionary<string, object>
+            {
+                { "text", new[] { protectedText } },
+                { "target_lang", target }
+            };
+            if (!string.IsNullOrEmpty(source))
+                payload["source_lang"] = source;
+
+            string json = new JavaScriptSerializer().Serialize(payload);
+            string responseJson = PostDeepL(json, apiKey);
+
+            Dictionary<string, object> response = new JavaScriptSerializer().DeserializeObject(responseJson) as Dictionary<string, object>;
+            object[] translations = response != null && response.ContainsKey("translations") ? response["translations"] as object[] : null;
+            if (translations == null || translations.Length == 0)
+                throw new InvalidOperationException("DeepL returned no translations.");
+
+            Dictionary<string, object> first = translations[0] as Dictionary<string, object>;
+            string translated = first != null && first.ContainsKey("text") ? first["text"] as string : null;
+            if (string.IsNullOrEmpty(translated))
+                return text;
+
+            return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
+        }
+
+        /// <summary>
+        /// Posts the request to the DeepL API, trying the free endpoint first
+        /// and then the pro endpoint for paid API keys.
+        /// </summary>
+        private static string PostDeepL(string json, string apiKey)
+        {
+            byte[] body = Encoding.UTF8.GetBytes(json);
+            WebException lastError = null;
+            foreach (string url in new[] { DeepLFreeApiUrl, DeepLProApiUrl })
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.ContentType = "application/json";
+                request.UserAgent = "Mozilla/5.0";
+                request.Timeout = 30000;
+                request.Headers["Authorization"] = "DeepL-Auth-Key " + apiKey;
+                try
+                {
+                    using (Stream requestStream = request.GetRequestStream())
+                        requestStream.Write(body, 0, body.Length);
+                    using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                    using (Stream stream = response.GetResponseStream())
+                    using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        return reader.ReadToEnd();
+                }
+                catch (WebException ex)
+                {
+                    lastError = ex;
+                    // Try the next endpoint on auth / HTTP errors
+                }
+            }
+            throw new InvalidOperationException("DeepL request failed.", lastError);
+        }
+
+        /// <summary>
+        /// Maps the internal language codes to DeepL target language codes.
+        /// </summary>
+        private static string DeepLTargetLanguage(string code)
+        {
+            switch ((code ?? string.Empty).ToLowerInvariant())
+            {
+                case "zh-cn": return "ZH";
+                case "zh-tw": return "ZH-HANT";
+                case "en": return "EN";
+                case "ja": return "JA";
+                case "ko": return "KO";
+                case "fr": return "FR";
+                case "de": return "DE";
+                case "es": return "ES";
+                case "ru": return "RU";
+                default: return "EN";
+            }
+        }
+
+        /// <summary>
+        /// Maps the internal language codes to DeepL source language codes.
+        /// Returns null for unknown languages (DeepL auto-detects).
+        /// </summary>
+        private static string DeepLSourceLanguage(string code)
+        {
+            switch ((code ?? string.Empty).ToLowerInvariant())
+            {
+                case "zh-cn": return "ZH";
+                case "zh-tw": return "ZH-HANT";
+                case "en": return "EN";
+                case "ja": return "JA";
+                case "ko": return "KO";
+                case "fr": return "FR";
+                case "de": return "DE";
+                case "es": return "ES";
+                case "ru": return "RU";
+                default: return null;
+            }
         }
 
         /// <summary>
@@ -270,6 +403,27 @@ namespace Assistant.Controllers
                     return token;
                 });
             }
+
+            // Protect runs of capitalized words - likely proper names
+            // (e.g. "John Smith") so Google does not translate them.
+            Regex capitalizedRun = new Regex(@"\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){1,3}\b");
+            text = capitalizedRun.Replace(text, match =>
+            {
+                string token = "GTB" + protectedTokens.Count;
+                protectedTokens.Add(match.Value);
+                return token;
+            });
+
+            // Protect a single capitalized name after common speech verbs
+            // (e.g. "saw John", "met Sarah").
+            Regex nameAfterVerb = new Regex(@"(?i)\b(saw|met|said|called|asked|told|greeted|noticed|spotted)\s+([A-Z][a-z]+)\b");
+            text = nameAfterVerb.Replace(text, match =>
+            {
+                string token = "GTB" + protectedTokens.Count;
+                protectedTokens.Add(match.Groups[2].Value);
+                return match.Groups[1].Value + " " + token;
+            });
+
             return ProtectedPattern.Replace(text, match =>
             {
                 string token = "GTB" + protectedTokens.Count;

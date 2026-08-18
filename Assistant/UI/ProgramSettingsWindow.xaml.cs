@@ -82,9 +82,12 @@ namespace Assistant.UI
             TranslationBulkHotkeyLabel.Content = Strings.TranslationBulkHotkey;
             AutoTranslateCheckBox.Content = Strings.AutoTranslate;
             AutoTranslateHotkeyLabel.Content = Strings.AutoTranslateHotkey;
+            ShowGameToastsCheckBox.Content = Strings.ShowGameToasts;
+            SettingsPageTranslationCheckBox.Content = Strings.SettingsPageTranslation;
             TranslationProviderLabel.Content = Strings.TranslationProvider;
             DeepSeekApiKeyLabel.Content = Strings.DeepSeekApiKey;
             DeepSeekModelLabel.Content = Strings.DeepSeekModel;
+            DeepLApiKeyLabel.Content = Strings.DeepLApiKey;
             TranslationDisplayModeLabel.Content = Strings.TranslationDisplayMode;
             TranslationPromptLabel.Content = Strings.TranslationPrompt;
             SendTranslationEnabled.Content = Strings.SendTranslationEnabled;
@@ -94,6 +97,7 @@ namespace Assistant.UI
             SendProviderLabel.Content = Strings.TranslationProvider;
             SendApiKeyLabel.Content = Strings.DeepSeekApiKey;
             SendModelLabel.Content = Strings.DeepSeekModel;
+            SendDeepLApiKeyLabel.Content = Strings.SendDeepLApiKey;
             SendPromptLabel.Content = Strings.TranslationPrompt;
             TranslationStyleLabel.Content = Strings.TranslationStyle;
 
@@ -129,8 +133,9 @@ namespace Assistant.UI
                 Properties.Settings.Default.SendSourceLanguage = TranslationController.TargetLanguages[SendSourceLanguageList.SelectedIndex - 1].Key;
             if (SendTargetLanguageList.SelectedIndex >= 0 && SendTargetLanguageList.SelectedIndex < TranslationController.TargetLanguages.Length)
                 Properties.Settings.Default.SendTargetLanguage = TranslationController.TargetLanguages[SendTargetLanguageList.SelectedIndex].Key;
-            Properties.Settings.Default.TranslationProvider = TranslationProviderList.SelectedIndex == 1 ? "DeepSeek" : "Google";
+            Properties.Settings.Default.TranslationProvider = ProviderName(TranslationProviderList.SelectedIndex);
             Properties.Settings.Default.DeepSeekApiKey = DeepSeekApiKeyBox.Password;
+            Properties.Settings.Default.DeepLApiKey = DeepLApiKeyBox.Password;
             if (DeepSeekModelList.SelectedIndex >= 0)
                 Properties.Settings.Default.DeepSeekModel = DeepSeekModelList.SelectedItem.ToString();
             Properties.Settings.Default.TranslationDisplayMode = TranslationDisplayModeList.SelectedIndex == 1 ? "replace" : "append";
@@ -139,12 +144,15 @@ namespace Assistant.UI
             Properties.Settings.Default.TranslationBulkHotkey = string.IsNullOrEmpty(bulkHotkey) ? "Ctrl+F9" : bulkHotkey;
             Properties.Settings.Default.AutoTranslate = AutoTranslateCheckBox.IsChecked == true;
             string autoHotkey = (AutoTranslateHotkeyBox.Text ?? string.Empty).Trim();
+            Properties.Settings.Default.ShowGameToasts = ShowGameToastsCheckBox.IsChecked == true;
+            Properties.Settings.Default.SettingsPageTranslation = SettingsPageTranslationCheckBox.IsChecked == true;
             Properties.Settings.Default.AutoTranslateHotkey = string.IsNullOrEmpty(autoHotkey) ? "Ctrl+Shift+F9" : autoHotkey;
             Properties.Settings.Default.SendTranslationEnabled = SendTranslationEnabled.IsChecked == true;
             string hotkey = (SendTranslationKeyBox.Text ?? string.Empty).Trim();
             Properties.Settings.Default.SendTranslationHotkey = string.IsNullOrEmpty(hotkey) ? "F9" : hotkey;
-            Properties.Settings.Default.SendTranslationProvider = SendProviderList.SelectedIndex == 1 ? "DeepSeek" : "Google";
+            Properties.Settings.Default.SendTranslationProvider = ProviderName(SendProviderList.SelectedIndex);
             Properties.Settings.Default.SendDeepSeekApiKey = SendApiKeyBox.Password;
+            Properties.Settings.Default.SendDeepLApiKey = SendDeepLApiKeyBox.Password;
             if (SendModelList.SelectedIndex >= 0)
                 Properties.Settings.Default.SendDeepSeekModel = SendModelList.SelectedItem.ToString();
             Properties.Settings.Default.SendTranslationPrompt = SendPromptBox.Text;
@@ -187,21 +195,25 @@ namespace Assistant.UI
             SelectTargetLanguage(Properties.Settings.Default.TargetLanguage);
             SelectSendLanguage(SendSourceLanguageList, Properties.Settings.Default.SendSourceLanguage, true);
             SelectSendLanguage(SendTargetLanguageList, Properties.Settings.Default.SendTargetLanguage, false);
-            TranslationProviderList.SelectedIndex = Properties.Settings.Default.TranslationProvider == "DeepSeek" ? 1 : 0;
+            TranslationProviderList.SelectedIndex = ProviderIndex(Properties.Settings.Default.TranslationProvider);
             DeepSeekApiKeyBox.Password = Properties.Settings.Default.DeepSeekApiKey;
+            DeepLApiKeyBox.Password = Properties.Settings.Default.DeepLApiKey;
             SelectDeepSeekModel(Properties.Settings.Default.DeepSeekModel);
             TranslationDisplayModeList.SelectedIndex = Properties.Settings.Default.TranslationDisplayMode == "replace" ? 1 : 0;
             TranslationPromptBox.Text = Properties.Settings.Default.TranslationPrompt;
             SendTranslationEnabled.IsChecked = Properties.Settings.Default.SendTranslationEnabled;
             SendTranslationKeyBox.Text = Properties.Settings.Default.SendTranslationHotkey;
-            SendProviderList.SelectedIndex = Properties.Settings.Default.SendTranslationProvider == "DeepSeek" ? 1 : 0;
+            SendProviderList.SelectedIndex = ProviderIndex(Properties.Settings.Default.SendTranslationProvider);
             SendApiKeyBox.Password = Properties.Settings.Default.SendDeepSeekApiKey;
+            SendDeepLApiKeyBox.Password = Properties.Settings.Default.SendDeepLApiKey;
             SelectSendModel(Properties.Settings.Default.SendDeepSeekModel);
             SendPromptBox.Text = Properties.Settings.Default.SendTranslationPrompt;
             TranslationStyleList.SelectedIndex = "formal".Equals(Properties.Settings.Default.TranslationStyle) ? 1 : "literary".Equals(Properties.Settings.Default.TranslationStyle) ? 2 : 0;
             TranslationBulkHotkeyBox.Text = Properties.Settings.Default.TranslationBulkHotkey;
             AutoTranslateCheckBox.IsChecked = Properties.Settings.Default.AutoTranslate;
             AutoTranslateHotkeyBox.Text = Properties.Settings.Default.AutoTranslateHotkey;
+            ShowGameToastsCheckBox.IsChecked = Properties.Settings.Default.ShowGameToasts;
+            SettingsPageTranslationCheckBox.IsChecked = Properties.Settings.Default.SettingsPageTranslation;
             UpdateTranslationProviderState();
             UpdateSendTranslationState();
             UpdateSendProviderState();
@@ -265,6 +277,7 @@ namespace Assistant.UI
             TranslationProviderList.Items.Clear();
             TranslationProviderList.Items.Add(Strings.TranslationProviderGoogle);
             TranslationProviderList.Items.Add(Strings.TranslationProviderDeepSeek);
+            TranslationProviderList.Items.Add(Strings.TranslationProviderDeepL);
 
             TranslationDisplayModeList.Items.Clear();
             TranslationDisplayModeList.Items.Add(Strings.TranslationDisplayAppend);
@@ -282,6 +295,7 @@ namespace Assistant.UI
             SendProviderList.Items.Clear();
             SendProviderList.Items.Add(Strings.TranslationProviderGoogle);
             SendProviderList.Items.Add(Strings.TranslationProviderDeepSeek);
+            SendProviderList.Items.Add(Strings.TranslationProviderDeepL);
 
             SendModelList.Items.Clear();
             foreach (string model in TranslationController.DeepSeekModels)
@@ -317,18 +331,47 @@ namespace Assistant.UI
         }
 
         /// <summary>
+        /// Maps a translation provider name to its combo box index
+        /// (0 = Google, 1 = DeepSeek, 2 = DeepL)
+        /// </summary>
+        private static int ProviderIndex(string provider)
+        {
+            if (string.Equals(provider, "DeepSeek", StringComparison.OrdinalIgnoreCase))
+                return 1;
+            if (string.Equals(provider, "DeepL", StringComparison.OrdinalIgnoreCase))
+                return 2;
+            return 0;
+        }
+
+        /// <summary>
+        /// Maps a translation provider combo box index to its setting value
+        /// </summary>
+        private static string ProviderName(int index)
+        {
+            if (index == 1)
+                return "DeepSeek";
+            if (index == 2)
+                return "DeepL";
+            return "Google";
+        }
+
+        /// <summary>
         /// Enables or disables the DeepSeek controls depending
         /// on the selected translation provider
         /// </summary>
         private void UpdateTranslationProviderState()
         {
-            bool deepSeek = TranslationProviderList.SelectedIndex == 1;
+            int index = TranslationProviderList.SelectedIndex;
+            bool deepSeek = index == 1;
+            bool deepL = index == 2;
             DeepSeekApiKeyLabel.IsEnabled = deepSeek;
             DeepSeekApiKeyBox.IsEnabled = deepSeek;
             DeepSeekModelLabel.IsEnabled = deepSeek;
             DeepSeekModelList.IsEnabled = deepSeek;
             TranslationPromptLabel.IsEnabled = deepSeek;
             TranslationPromptBox.IsEnabled = deepSeek;
+            DeepLApiKeyLabel.IsEnabled = deepL;
+            DeepLApiKeyBox.IsEnabled = deepL;
         }
 
         /// <summary>
@@ -366,13 +409,17 @@ namespace Assistant.UI
         /// </summary>
         private void UpdateSendProviderState()
         {
-            bool deepSeek = SendProviderList.SelectedIndex == 1;
+            int index = SendProviderList.SelectedIndex;
+            bool deepSeek = index == 1;
+            bool deepL = index == 2;
             SendApiKeyLabel.IsEnabled = deepSeek;
             SendApiKeyBox.IsEnabled = deepSeek;
             SendModelLabel.IsEnabled = deepSeek;
             SendModelList.IsEnabled = deepSeek;
             SendPromptLabel.IsEnabled = deepSeek;
             SendPromptBox.IsEnabled = deepSeek;
+            SendDeepLApiKeyLabel.IsEnabled = deepL;
+            SendDeepLApiKeyBox.IsEnabled = deepL;
         }
 
         /// <summary>
@@ -523,6 +570,7 @@ namespace Assistant.UI
             Properties.Settings.Default.SendTargetLanguage = "en";
             Properties.Settings.Default.TranslationProvider = "Google";
             Properties.Settings.Default.DeepSeekApiKey = string.Empty;
+            Properties.Settings.Default.DeepLApiKey = string.Empty;
             Properties.Settings.Default.DeepSeekModel = "deepseek-v4-flash";
             Properties.Settings.Default.TranslationDisplayMode = "append";
             Properties.Settings.Default.TranslationPrompt = string.Empty;
@@ -530,12 +578,15 @@ namespace Assistant.UI
             Properties.Settings.Default.SendTranslationHotkey = "F9";
             Properties.Settings.Default.SendTranslationProvider = "Google";
             Properties.Settings.Default.SendDeepSeekApiKey = string.Empty;
+            Properties.Settings.Default.SendDeepLApiKey = string.Empty;
             Properties.Settings.Default.SendDeepSeekModel = "deepseek-v4-flash";
             Properties.Settings.Default.SendTranslationPrompt = string.Empty;
             Properties.Settings.Default.TranslationStyle = "casual";
             Properties.Settings.Default.TranslationBulkHotkey = "Ctrl+F9";
             Properties.Settings.Default.AutoTranslate = false;
             Properties.Settings.Default.AutoTranslateHotkey = "Ctrl+Shift+F9";
+            Properties.Settings.Default.ShowGameToasts = true;
+            Properties.Settings.Default.SettingsPageTranslation = false;
             Properties.Settings.Default.TranslatorWindowLeft = -1;
             Properties.Settings.Default.TranslatorWindowTop = -1;
 

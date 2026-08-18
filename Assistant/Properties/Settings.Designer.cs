@@ -775,5 +775,53 @@ namespace Assistant.Properties {
                 this["TranslatorWindowTop"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool ShowGameToasts {
+            get {
+                return ((bool)(this["ShowGameToasts"]));
+            }
+            set {
+                this["ShowGameToasts"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string DeepLApiKey {
+            get {
+                return ((string)(this["DeepLApiKey"]));
+            }
+            set {
+                this["DeepLApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendDeepLApiKey {
+            get {
+                return ((string)(this["SendDeepLApiKey"]));
+            }
+            set {
+                this["SendDeepLApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool SettingsPageTranslation {
+            get {
+                return ((bool)(this["SettingsPageTranslation"]));
+            }
+            set {
+                this["SettingsPageTranslation"] = value;
+            }
+        }
     }
 }
