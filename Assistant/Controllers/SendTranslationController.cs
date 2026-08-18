@@ -84,13 +84,15 @@ namespace Assistant.Controllers
                     // NUI may be reloading; retry on the next poll
                 }
 
-                Thread.Sleep(300);
+                Thread.Sleep(150);
             }
         }
 
         private static string lastInputText;
         private static string lastTranslated;
         private static DateTime lastRetranslate = DateTime.UtcNow;
+        private static string translatingInput;
+        private static string completedTranslation;
 
         /// <summary>
         /// Reports the translator hotkey toggle as a Windows toast. The send
@@ -149,6 +151,8 @@ namespace Assistant.Controllers
             {
                 lastInputText = null;
                 lastTranslated = null;
+                translatingInput = null;
+                completedTranslation = null;
                 return;
             }
 
@@ -187,6 +191,8 @@ namespace Assistant.Controllers
                     Reader.ClearSendOverlay();
                 lastInputText = null;
                 lastTranslated = null;
+                translatingInput = null;
+                completedTranslation = null;
                 return;
             }
 
@@ -210,22 +216,40 @@ namespace Assistant.Controllers
                 return;
             }
 
+            // Apply a finished background translation if the input has not
+            // changed since the request was sent.
+            if (completedTranslation != null)
+            {
+                if (string.Equals(inputText, translatingInput, StringComparison.Ordinal))
+                {
+                    lastTranslated = completedTranslation;
+                    Reader.UpdateSendOverlayTranslated(completedTranslation);
+                }
+                completedTranslation = null;
+                translatingInput = null;
+            }
+
             if (inputText != lastInputText)
             {
                 lastInputText = inputText;
                 Reader.UpdateSendOverlayOriginal(inputText);
 
-                // Re-translate when the player edits the in-game chat input
-                // (throttled so typing does not flood the translation provider).
-                if ((DateTime.UtcNow - lastRetranslate).TotalMilliseconds > 1200)
+                // Re-translate in the background so the original text keeps
+                // syncing while the provider answers. Throttled: one request
+                // per 1.2 s and only one request in flight at a time.
+                if (translatingInput == null && (DateTime.UtcNow - lastRetranslate).TotalMilliseconds > 1200)
                 {
                     lastRetranslate = DateTime.UtcNow;
-                    string newTranslated = TranslateBody(inputText);
-                    if (!string.Equals(newTranslated, lastTranslated, StringComparison.Ordinal))
+                    translatingInput = inputText;
+                    string request = inputText;
+                    System.Threading.Tasks.Task.Run(() =>
                     {
-                        lastTranslated = newTranslated;
-                        Reader.UpdateSendOverlayTranslated(newTranslated);
-                    }
+                        string translatedResult = TranslateBody(request);
+                        lock (SyncRoot)
+                        {
+                            completedTranslation = translatedResult;
+                        }
+                    });
                 }
             }
         }
@@ -303,9 +327,10 @@ namespace Assistant.Controllers
                     Properties.Settings.Default.SendTranslationPrompt,
                     Properties.Settings.Default.TranslationStyle);
             }
-            catch
+            catch (Exception ex)
             {
                 translated = string.Empty;
+                TranslationController.LogTranslationError(provider ?? "?", "send: " + text + " => " + ex.Message);
             }
 
             if (!string.IsNullOrEmpty(prefix) && !string.IsNullOrEmpty(translated))
