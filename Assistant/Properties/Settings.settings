@@ -119,8 +119,14 @@
     <Setting Name="DeepSeekModel" Type="System.String" Scope="User">
       <Value Profile="(Default)">deepseek-v4-flash</Value>
     </Setting>
+    <Setting Name="DeepSeekReasoningSpeed" Type="System.String" Scope="User">
+      <Value Profile="(Default)">fast</Value>
+    </Setting>
     <Setting Name="TranslationDisplayMode" Type="System.String" Scope="User">
       <Value Profile="(Default)">append</Value>
+    </Setting>
+    <Setting Name="EnableTranslationCache" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="TranslationPrompt" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
@@ -139,6 +145,9 @@
     </Setting>
     <Setting Name="SendDeepSeekModel" Type="System.String" Scope="User">
       <Value Profile="(Default)">deepseek-v4-flash</Value>
+    </Setting>
+    <Setting Name="SendDeepSeekReasoningSpeed" Type="System.String" Scope="User">
+      <Value Profile="(Default)">fast</Value>
     </Setting>
     <Setting Name="SendTranslationPrompt" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
@@ -181,6 +190,36 @@
     </Setting>
     <Setting Name="SendDoubaoModel" Type="System.String" Scope="User">
       <Value Profile="(Default)">doubao-seed-2.0-lite</Value>
+    </Setting>
+    <Setting Name="CustomEndpoint" Type="System.String" Scope="User">
+      <Value Profile="(Default)">https://dashscope.aliyuncs.com/compatible-mode/v1</Value>
+    </Setting>
+    <Setting Name="CustomProviderName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Alibaba Qwen</Value>
+    </Setting>
+    <Setting Name="CustomApiKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)"></Value>
+    </Setting>
+    <Setting Name="CustomModel" Type="System.String" Scope="User">
+      <Value Profile="(Default)">qwen-plus</Value>
+    </Setting>
+    <Setting Name="CustomModels" Type="System.String" Scope="User">
+      <Value Profile="(Default)"></Value>
+    </Setting>
+    <Setting Name="SendCustomEndpoint" Type="System.String" Scope="User">
+      <Value Profile="(Default)">https://dashscope.aliyuncs.com/compatible-mode/v1</Value>
+    </Setting>
+    <Setting Name="SendCustomProviderName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Alibaba Qwen</Value>
+    </Setting>
+    <Setting Name="SendCustomApiKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)"></Value>
+    </Setting>
+    <Setting Name="SendCustomModel" Type="System.String" Scope="User">
+      <Value Profile="(Default)">qwen-plus</Value>
+    </Setting>
+    <Setting Name="SendCustomModels" Type="System.String" Scope="User">
+      <Value Profile="(Default)"></Value>
     </Setting>
     <Setting Name="ZoomApiKey" Type="System.String" Scope="User">
       <Value Profile="(Default)"></Value>

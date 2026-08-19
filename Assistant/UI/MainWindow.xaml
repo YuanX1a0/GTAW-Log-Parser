@@ -300,6 +300,14 @@
                         <Label x:Name="DeepSeekModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="DeepSeekModelList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
                     </Grid>
+                    <Grid x:Name="DeepSeekSpeedRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="DeepSeekSpeedLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="DeepSeekSpeedList" Grid.Column="1" SelectionChanged="DeepSeekSpeedList_SelectionChanged" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
                     <Grid x:Name="DeepLApiKeyRow" Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="170"/>
@@ -324,6 +332,41 @@
                         <Label x:Name="DoubaoModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="DoubaoModelList" Grid.Column="1" IsEditable="True" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
                     </Grid>
+                    <Grid x:Name="CustomProviderRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="CustomProviderLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="CustomProviderList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="280"/>
+                    </Grid>
+                    <Grid x:Name="CustomEndpointRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="CustomEndpointLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="CustomEndpointBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="420"/>
+                    </Grid>
+                    <Grid x:Name="CustomApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="CustomApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="CustomApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="CustomModelRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="CustomModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <DockPanel Grid.Column="1">
+                            <Button x:Name="CustomModelAddButton" DockPanel.Dock="Right" Width="60" Height="26" Margin="6,0,0,0" Content="+" Click="CustomModelAddButton_Click"/>
+                            <ComboBox x:Name="CustomModelList" IsEditable="True" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+                        </DockPanel>
+                    </Grid>
                     <Grid x:Name="ZoomApiKeyRow" Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="170"/>
@@ -339,6 +382,14 @@
                         </Grid.ColumnDefinitions>
                         <Label x:Name="TranslationDisplayModeLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="TranslationDisplayModeList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="EnableCacheRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="EnableCacheLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <CheckBox x:Name="EnableCacheCheckBox" Grid.Column="1" VerticalAlignment="Center"/>
                     </Grid>
                     <Grid x:Name="TranslationPromptRow" Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
@@ -408,6 +459,14 @@
                         <Label x:Name="SendModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="SendModelList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
                     </Grid>
+                    <Grid x:Name="SendSpeedRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendSpeedLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendSpeedList" Grid.Column="1" SelectionChanged="SendSpeedList_SelectionChanged" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
                     <Grid x:Name="SendDeepLApiKeyRow" Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="170"/>
@@ -431,6 +490,41 @@
                         </Grid.ColumnDefinitions>
                         <Label x:Name="SendDoubaoModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="SendDoubaoModelList" Grid.Column="1" IsEditable="True" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="SendCustomProviderRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendCustomProviderLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SendCustomProviderList" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="280"/>
+                    </Grid>
+                    <Grid x:Name="SendCustomEndpointRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendCustomEndpointLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="SendCustomEndpointBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="420"/>
+                    </Grid>
+                    <Grid x:Name="SendCustomApiKeyRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendCustomApiKeyLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <PasswordBox x:Name="SendCustomApiKeyBox" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
+                    </Grid>
+                    <Grid x:Name="SendCustomModelRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="SendCustomModelLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <DockPanel Grid.Column="1">
+                            <Button x:Name="SendCustomModelAddButton" DockPanel.Dock="Right" Width="60" Height="26" Margin="6,0,0,0" Content="+" Click="SendCustomModelAddButton_Click"/>
+                            <ComboBox x:Name="SendCustomModelList" IsEditable="True" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+                        </DockPanel>
                     </Grid>
                     <Grid x:Name="SendZoomApiKeyRow" Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>

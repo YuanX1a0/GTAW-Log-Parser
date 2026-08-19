@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Threading;
 using System.Diagnostics;
@@ -24,6 +25,24 @@ namespace Assistant.UI
         private static bool isRestarting;
         private System.Windows.Threading.DispatcherTimer _autoParseTimer;
         private string _lastAutoParsedLog = string.Empty;
+
+        // Debounced model-list refresh: when an API key is typed, the model
+        // combo boxes are repopulated from the actual account (DeepSeek /
+        // Doubao / Custom) instead of the built-in static list. Every
+        // provider gets its own request + timer so scheduled refreshes for
+        // different providers never overwrite each other.
+        private class ModelRefreshRequest
+        {
+            public string Key;
+            public string Endpoint;
+            public ComboBox Combo;
+        }
+        private readonly Dictionary<string, ModelRefreshRequest> _modelRefreshRequests = new Dictionary<string, ModelRefreshRequest>();
+        private readonly Dictionary<string, System.Threading.Timer> _modelRefreshTimers = new Dictionary<string, System.Threading.Timer>();
+        private readonly Dictionary<string, string> _loadedModelKeys = new Dictionary<string, string>();
+        // User-added custom model names for the Custom provider model boxes.
+        private readonly HashSet<string> _customChatModels = new HashSet<string>();
+        private readonly HashSet<string> _customSendModels = new HashSet<string>();
 
         /// <summary>
         /// Initializes the main window
@@ -133,7 +152,8 @@ namespace Assistant.UI
                 : bytes >= 1024
                     ? string.Format("{0:F1} KB", bytes / 1024.0)
                     : bytes + " B";
-            CacheInfo.Text = string.Format(Strings.OverviewCacheInfo, count.ToString("N0"), sizeText);
+            CacheInfo.Text = string.Format(Strings.OverviewCacheInfo, count.ToString("N0"), sizeText)
+                + "  ·  " + string.Format(Strings.OverviewCacheHits, TranslationController.CacheHits.ToString("N0"));
 
             CacheList.ItemsSource = TranslationController.GetRecentCacheEntries(200);
         }
@@ -321,11 +341,17 @@ namespace Assistant.UI
             TranslationProviderLabel.Content = Strings.TranslationProvider;
             DeepSeekApiKeyLabel.Content = Strings.DeepSeekApiKey;
             DeepSeekModelLabel.Content = Strings.DeepSeekModel;
+            DeepSeekSpeedLabel.Content = Strings.DeepSeekSpeed;
             DeepLApiKeyLabel.Content = Strings.DeepLApiKey;
             DoubaoApiKeyLabel.Content = Strings.DoubaoApiKey;
             DoubaoModelLabel.Content = Strings.DoubaoModel;
+            CustomEndpointLabel.Content = Strings.CustomEndpoint;
+            CustomProviderLabel.Content = Strings.CustomProvider;
+            CustomApiKeyLabel.Content = Strings.CustomApiKey;
+            CustomModelLabel.Content = Strings.CustomModel;
             ZoomApiKeyLabel.Content = Strings.ZoomApiKey;
             TranslationDisplayModeLabel.Content = Strings.TranslationDisplayMode;
+            EnableCacheLabel.Content = Strings.EnableTranslationCache;
             TranslationPromptLabel.Content = Strings.TranslationPrompt;
             TranslationStyleLabel.Content = Strings.TranslationStyle;
             SendTranslationEnabled.Content = Strings.SendTranslationEnabled;
@@ -335,9 +361,14 @@ namespace Assistant.UI
             SendProviderLabel.Content = Strings.TranslationProvider;
             SendApiKeyLabel.Content = Strings.DeepSeekApiKey;
             SendModelLabel.Content = Strings.DeepSeekModel;
+            SendSpeedLabel.Content = Strings.DeepSeekSpeed;
             SendDeepLApiKeyLabel.Content = Strings.SendDeepLApiKey;
             SendDoubaoApiKeyLabel.Content = Strings.SendDoubaoApiKey;
             SendDoubaoModelLabel.Content = Strings.SendDoubaoModel;
+            SendCustomEndpointLabel.Content = Strings.SendCustomEndpoint;
+            SendCustomProviderLabel.Content = Strings.SendCustomProvider;
+            SendCustomApiKeyLabel.Content = Strings.SendCustomApiKey;
+            SendCustomModelLabel.Content = Strings.SendCustomModel;
             SendZoomApiKeyLabel.Content = Strings.SendZoomApiKey;
             SendPromptLabel.Content = Strings.TranslationPrompt;
         }
@@ -541,6 +572,7 @@ namespace Assistant.UI
             TranslationProviderList.Items.Add(Strings.TranslationProviderDeepSeek);
             TranslationProviderList.Items.Add(Strings.TranslationProviderDeepL);
             TranslationProviderList.Items.Add(Strings.TranslationProviderDoubao);
+            TranslationProviderList.Items.Add(Strings.TranslationProviderCustom);
             TranslationProviderList.Items.Add(Strings.TranslationProviderZoom);
 
             TranslationDisplayModeList.Items.Clear();
@@ -561,6 +593,7 @@ namespace Assistant.UI
             SendProviderList.Items.Add(Strings.TranslationProviderDeepSeek);
             SendProviderList.Items.Add(Strings.TranslationProviderDeepL);
             SendProviderList.Items.Add(Strings.TranslationProviderDoubao);
+            SendProviderList.Items.Add(Strings.TranslationProviderCustom);
             SendProviderList.Items.Add(Strings.TranslationProviderZoom);
 
             SendModelList.Items.Clear();
@@ -576,6 +609,9 @@ namespace Assistant.UI
             foreach (string model in TranslationController.DeepSeekModels)
                 DeepSeekModelList.Items.Add(model);
 
+            PopulateSpeedList(DeepSeekSpeedList);
+            PopulateSpeedList(SendSpeedList);
+
             DoubaoModelList.Items.Clear();
             foreach (string model in TranslationController.DoubaoModels)
                 DoubaoModelList.Items.Add(model);
@@ -583,6 +619,32 @@ namespace Assistant.UI
             SendDoubaoModelList.Items.Clear();
             foreach (string model in TranslationController.DoubaoModels)
                 SendDoubaoModelList.Items.Add(model);
+
+            CustomProviderList.Items.Clear();
+            foreach (TranslationController.AiProviderPreset preset in TranslationController.AiProviderPresets)
+                CustomProviderList.Items.Add(preset.Name);
+            CustomModelList.Items.Clear();
+            foreach (string model in TranslationController.CustomDefaultModels)
+                CustomModelList.Items.Add(model);
+            _customChatModels.Clear();
+            foreach (string name in SplitModelList(Properties.Settings.Default.CustomModels))
+            {
+                _customChatModels.Add(name);
+                CustomModelList.Items.Add(name);
+            }
+
+            SendCustomProviderList.Items.Clear();
+            foreach (TranslationController.AiProviderPreset preset in TranslationController.AiProviderPresets)
+                SendCustomProviderList.Items.Add(preset.Name);
+            SendCustomModelList.Items.Clear();
+            foreach (string model in TranslationController.CustomDefaultModels)
+                SendCustomModelList.Items.Add(model);
+            _customSendModels.Clear();
+            foreach (string name in SplitModelList(Properties.Settings.Default.SendCustomModels))
+            {
+                _customSendModels.Add(name);
+                SendCustomModelList.Items.Add(name);
+            }
 
             SubscribeImmediateSettings();
         }
@@ -603,13 +665,28 @@ namespace Assistant.UI
             TranslationEnabled.Unchecked += saveRouted;
             TargetLanguageList.SelectionChanged += saveSelection;
             SourceLanguageList.SelectionChanged += saveSelection;
-            DeepSeekApiKeyBox.PasswordChanged += saveRouted;
+            DeepSeekApiKeyBox.PasswordChanged += ProviderKey_PasswordChanged;
             DeepSeekModelList.SelectionChanged += saveSelection;
+            DeepSeekModelList.SelectionChanged += DeepSeekModelList_SyncedSpeed;
+            DeepSeekModelList.SelectionChanged += ModelSelectionChanged;
+            DeepSeekSpeedList.SelectionChanged += DeepSeekSpeedList_SelectionChanged;
             DeepLApiKeyBox.PasswordChanged += saveRouted;
-            DoubaoApiKeyBox.PasswordChanged += saveRouted;
+            DoubaoApiKeyBox.PasswordChanged += ProviderKey_PasswordChanged;
             DoubaoModelList.SelectionChanged += saveSelection;
+            DoubaoModelList.SelectionChanged += ModelSelectionChanged;
+            HookEditableModelCombo(DoubaoModelList);
+            DoubaoModelList.LostKeyboardFocus += EditableModelList_LostFocus;
+            CustomEndpointBox.TextChanged += CustomEndpoint_TextChanged;
+            CustomProviderList.SelectionChanged += CustomProviderList_SelectionChanged;
+            CustomApiKeyBox.PasswordChanged += ProviderKey_PasswordChanged;
+            CustomModelList.SelectionChanged += saveSelection;
+            CustomModelList.SelectionChanged += ModelSelectionChanged;
+            HookEditableModelCombo(CustomModelList);
+            CustomModelList.LostKeyboardFocus += EditableModelList_LostFocus;
             ZoomApiKeyBox.PasswordChanged += saveRouted;
             TranslationDisplayModeList.SelectionChanged += saveSelection;
+            EnableCacheCheckBox.Checked += saveRouted;
+            EnableCacheCheckBox.Unchecked += saveRouted;
             TranslationPromptBox.TextChanged += saveText;
             TranslationStyleList.SelectionChanged += saveSelection;
             TranslationBulkHotkeyBox.TextChanged += saveText;
@@ -626,13 +703,247 @@ namespace Assistant.UI
             SendSourceLanguageList.SelectionChanged += saveSelection;
             SendTargetLanguageList.SelectionChanged += saveSelection;
             SendTranslationKeyBox.TextChanged += saveText;
-            SendApiKeyBox.PasswordChanged += saveRouted;
+            SendApiKeyBox.PasswordChanged += ProviderKey_PasswordChanged;
             SendModelList.SelectionChanged += saveSelection;
+            SendModelList.SelectionChanged += SendModelList_SyncedSpeed;
+            SendModelList.SelectionChanged += ModelSelectionChanged;
+            SendSpeedList.SelectionChanged += SendSpeedList_SelectionChanged;
             SendDeepLApiKeyBox.PasswordChanged += saveRouted;
-            SendDoubaoApiKeyBox.PasswordChanged += saveRouted;
+            SendDoubaoApiKeyBox.PasswordChanged += ProviderKey_PasswordChanged;
             SendDoubaoModelList.SelectionChanged += saveSelection;
+            SendDoubaoModelList.SelectionChanged += ModelSelectionChanged;
+            HookEditableModelCombo(SendDoubaoModelList);
+            SendDoubaoModelList.LostKeyboardFocus += EditableModelList_LostFocus;
+            SendCustomEndpointBox.TextChanged += CustomEndpoint_TextChanged;
+            SendCustomProviderList.SelectionChanged += SendCustomProviderList_SelectionChanged;
+            SendCustomApiKeyBox.PasswordChanged += ProviderKey_PasswordChanged;
+            SendCustomModelList.SelectionChanged += saveSelection;
+            SendCustomModelList.SelectionChanged += ModelSelectionChanged;
+            HookEditableModelCombo(SendCustomModelList);
+            SendCustomModelList.LostKeyboardFocus += EditableModelList_LostFocus;
             SendZoomApiKeyBox.PasswordChanged += saveRouted;
             SendPromptBox.TextChanged += saveText;
+        }
+
+        /// <summary>
+        /// Saves the settings when the Custom provider endpoint URL changes
+        /// and schedules a model-list refresh for the new endpoint.
+        /// </summary>
+        private void CustomEndpoint_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_loadingTranslationSettings)
+                return;
+            SaveTranslationSettings();
+            string provider = ReferenceEquals(sender, SendCustomEndpointBox) ? "SendCustom" : "Custom";
+            InvalidateModelCache(provider);
+            ScheduleModelRefresh(provider);
+        }
+
+        /// <summary>
+        /// Saves the settings when a provider API key changes and schedules a
+        /// debounced model-list refresh, so the model combo boxes are populated
+        /// from the actual account instead of the built-in static list.
+        /// </summary>
+        private void ProviderKey_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (_loadingTranslationSettings)
+                return;
+            SaveTranslationSettings();
+            string provider = null;
+            if (ReferenceEquals(sender, DeepSeekApiKeyBox)) provider = "DeepSeek";
+            else if (ReferenceEquals(sender, DoubaoApiKeyBox)) provider = "Doubao";
+            else if (ReferenceEquals(sender, CustomApiKeyBox)) provider = "Custom";
+            else if (ReferenceEquals(sender, SendApiKeyBox)) provider = "SendDeepSeek";
+            else if (ReferenceEquals(sender, SendDoubaoApiKeyBox)) provider = "SendDoubao";
+            else if (ReferenceEquals(sender, SendCustomApiKeyBox)) provider = "SendCustom";
+            if (provider != null)
+            {
+                InvalidateModelCache(provider);
+                ScheduleModelRefresh(provider);
+            }
+        }
+
+        /// <summary>
+        /// (Re)schedules a single-shot model-list refresh for one provider
+        /// after the user stops typing, so each API key is queried at most
+        /// once per 1.2 s pause. Each provider has its own timer.
+        /// </summary>
+        private void ScheduleModelRefresh(string provider)
+        {
+            string key;
+            string endpoint;
+            ComboBox combo;
+            switch (provider)
+            {
+                case "DeepSeek": combo = DeepSeekModelList; key = DeepSeekApiKeyBox.Password; endpoint = null; break;
+                case "Doubao": combo = DoubaoModelList; key = DoubaoApiKeyBox.Password; endpoint = null; break;
+                case "Custom": combo = CustomModelList; key = CustomApiKeyBox.Password; endpoint = CustomEndpointBox.Text; break;
+                case "SendDeepSeek": combo = SendModelList; key = SendApiKeyBox.Password; endpoint = null; break;
+                case "SendDoubao": combo = SendDoubaoModelList; key = SendDoubaoApiKeyBox.Password; endpoint = null; break;
+                case "SendCustom": combo = SendCustomModelList; key = SendCustomApiKeyBox.Password; endpoint = SendCustomEndpointBox.Text; break;
+                default: return;
+            }
+            _modelRefreshRequests[provider] = new ModelRefreshRequest
+            {
+                Key = SanitizeKey(key),
+                Endpoint = (endpoint ?? string.Empty).Trim(),
+                Combo = combo
+            };
+
+            System.Threading.Timer timer;
+            if (_modelRefreshTimers.TryGetValue(provider, out timer) && timer != null)
+                timer.Dispose();
+            _modelRefreshTimers[provider] = new System.Threading.Timer(RefreshModelsTimerCallback, provider, 1200, System.Threading.Timeout.Infinite);
+        }
+
+        /// <summary>
+        /// Drops the loaded-model cache entries for a provider so a user
+        /// change to the API key or endpoint always triggers a fresh model
+        /// list fetch instead of being skipped as "already loaded".
+        /// </summary>
+        private void InvalidateModelCache(string provider)
+        {
+            string prefix = provider + "|";
+            List<string> matches = null;
+            foreach (string key in _loadedModelKeys.Keys)
+            {
+                if (key.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    if (matches == null)
+                        matches = new List<string>();
+                    matches.Add(key);
+                }
+            }
+            if (matches != null)
+            {
+                foreach (string key in matches)
+                    _loadedModelKeys.Remove(key);
+            }
+        }
+
+        /// <summary>
+        /// Fetches the model list for the scheduled provider/key/endpoint and
+        /// replaces the static items when the account exposes its own model
+        /// list. Runs on a background thread; the UI is updated through the
+        /// dispatcher.
+        /// </summary>
+        private void RefreshModelsTimerCallback(object state)
+        {
+            string provider = state as string;
+            ModelRefreshRequest request;
+            if (string.IsNullOrWhiteSpace(provider) || !_modelRefreshRequests.TryGetValue(provider, out request) || request.Combo == null)
+                return;
+            // Local servers (Ollama / LM Studio) work without an API key.
+            bool localProvider = (provider == "Custom" || provider == "SendCustom")
+                && !string.IsNullOrWhiteSpace(request.Endpoint);
+            if (string.IsNullOrWhiteSpace(request.Key) && !localProvider)
+                return;
+            string dedupKey = provider + "|" + request.Endpoint;
+            string loadedKey;
+            if (_loadedModelKeys.TryGetValue(dedupKey, out loadedKey) && string.Equals(loadedKey, request.Key, StringComparison.Ordinal))
+                return; // already refreshed for this key/endpoint
+
+            try
+            {
+                List<string> models = TranslationController.FetchModelList(provider, request.Key,
+                    string.IsNullOrWhiteSpace(request.Endpoint) ? null : request.Endpoint);
+                if (models == null || models.Count == 0)
+                {
+                    TranslationController.LogEvent("翻译", "模型列表获取失败（" + provider + "，" + request.Endpoint + "，" + MaskKey(request.Key) + "）：接口未返回可用模型");
+                    return; // keep the built-in static list
+                }
+                _loadedModelKeys[dedupKey] = request.Key;
+                ComboBox combo = request.Combo;
+                List<string> snapshot = new List<string>(models);
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    try
+                    {
+                        // Merge the player's manually-added models into the
+                        // fetched account list so they are not lost.
+                        HashSet<string> customStore = ReferenceEquals(combo, CustomModelList) ? _customChatModels : _customSendModels;
+                        List<string> merged = new List<string>(snapshot);
+                        foreach (string name in customStore)
+                        {
+                            bool exists = false;
+                            foreach (string item in merged)
+                            {
+                                if (string.Equals(item, name, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    exists = true;
+                                    break;
+                                }
+                            }
+                            if (!exists)
+                                merged.Add(name);
+                        }
+                        string current = combo.Text;
+                        combo.Items.Clear();
+                        foreach (string model in merged)
+                            combo.Items.Add(model);
+                        if (!string.IsNullOrEmpty(current) && merged.Contains(current))
+                            combo.Text = current;
+                        else
+                            combo.SelectedIndex = 0;
+                        TranslationController.LogEvent("翻译", "模型列表已更新（" + provider + "，" + request.Endpoint + "）：" + merged.Count + " 个模型");
+                    }
+                    catch (Exception ex)
+                    {
+                        TranslationController.LogEvent("翻译", "模型列表 UI 更新失败（" + provider + "）：" + ex.Message);
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                string hint = string.Empty;
+                if (provider == "SendCustom"
+                    && !string.IsNullOrWhiteSpace(Properties.Settings.Default.CustomApiKey)
+                    && !string.Equals(request.Key, Properties.Settings.Default.CustomApiKey, StringComparison.Ordinal))
+                {
+                    hint = "（发送区 Key 与聊天区 Custom Key 不一致，401 多半是发送区 Key 填错或已失效）";
+                }
+                TranslationController.LogEvent("翻译", "模型列表获取失败（" + provider + "，" + request.Endpoint + "，" + MaskKey(request.Key) + "）：" + ex.Message + hint);
+            }
+        }
+
+        /// <summary>
+        /// Masks an API key for the log so it can be diagnosed without
+        /// exposing the secret itself.
+        /// </summary>
+        private static string MaskKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return "Key(空)";
+            bool hasWhite = false;
+            foreach (char c in key)
+            {
+                if (char.IsWhiteSpace(c))
+                {
+                    hasWhite = true;
+                    break;
+                }
+            }
+            string suffix = hasWhite ? "，含空白字符" : string.Empty;
+            return key.Length <= 6
+                ? "Key(" + key.Length + "位" + suffix + ")"
+                : "Key(" + key.Substring(0, 4) + "…" + key.Length + "位" + suffix + ")";
+        }
+
+        /// <summary>
+        /// Removes every whitespace character from an API key. Pasting often
+        /// drags in newlines/tabs/spaces which would make the key invalid.
+        /// </summary>
+        private static string SanitizeKey(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+            StringBuilder sb = new StringBuilder(value.Length);
+            foreach (char c in value)
+            {
+                if (!char.IsWhiteSpace(c))
+                    sb.Append(c);
+            }
+            return sb.ToString();
         }
 
         /// <summary>
@@ -654,16 +965,24 @@ namespace Assistant.UI
             if (SendTargetLanguageList.SelectedIndex >= 0 && SendTargetLanguageList.SelectedIndex < TranslationController.TargetLanguages.Length)
                 Properties.Settings.Default.SendTargetLanguage = TranslationController.TargetLanguages[SendTargetLanguageList.SelectedIndex].Key;
             Properties.Settings.Default.TranslationProvider = ProviderName(TranslationProviderList.SelectedIndex);
-            Properties.Settings.Default.DeepSeekApiKey = DeepSeekApiKeyBox.Password;
-            Properties.Settings.Default.DeepLApiKey = DeepLApiKeyBox.Password;
-            Properties.Settings.Default.DoubaoApiKey = DoubaoApiKeyBox.Password;
-            Properties.Settings.Default.ZoomApiKey = ZoomApiKeyBox.Password;
+            Properties.Settings.Default.DeepSeekApiKey = SanitizeKey(DeepSeekApiKeyBox.Password);
+            Properties.Settings.Default.DeepLApiKey = SanitizeKey(DeepLApiKeyBox.Password);
+            Properties.Settings.Default.DoubaoApiKey = SanitizeKey(DoubaoApiKeyBox.Password);
+            Properties.Settings.Default.ZoomApiKey = SanitizeKey(ZoomApiKeyBox.Password);
             if (DeepSeekModelList.SelectedIndex >= 0)
                 Properties.Settings.Default.DeepSeekModel = DeepSeekModelList.SelectedItem.ToString();
+            if (DeepSeekSpeedList.SelectedItem is ComboBoxItem deepSeekSpeedItem)
+                Properties.Settings.Default.DeepSeekReasoningSpeed = (string)deepSeekSpeedItem.Tag;
             Properties.Settings.Default.DoubaoModel = string.IsNullOrWhiteSpace(DoubaoModelList.Text)
                 ? "doubao-seed-2.0-lite"
                 : DoubaoModelList.Text.Trim();
+            Properties.Settings.Default.CustomEndpoint = (CustomEndpointBox.Text ?? string.Empty).Trim();
+            Properties.Settings.Default.CustomProviderName = CustomProviderList.SelectedItem as string ?? string.Empty;
+            Properties.Settings.Default.CustomApiKey = SanitizeKey(CustomApiKeyBox.Password);
+            Properties.Settings.Default.CustomModel = (CustomModelList.Text ?? string.Empty).Trim();
+            Properties.Settings.Default.CustomModels = string.Join(",", _customChatModels);
             Properties.Settings.Default.TranslationDisplayMode = TranslationDisplayModeList.SelectedIndex == 1 ? "replace" : "append";
+            Properties.Settings.Default.EnableTranslationCache = EnableCacheCheckBox.IsChecked == true;
             Properties.Settings.Default.TranslationPrompt = TranslationPromptBox.Text;
             string bulkHotkey = (TranslationBulkHotkeyBox.Text ?? string.Empty).Trim();
             Properties.Settings.Default.TranslationBulkHotkey = string.IsNullOrEmpty(bulkHotkey) ? "Ctrl+F9" : bulkHotkey;
@@ -676,15 +995,22 @@ namespace Assistant.UI
             string hotkey = (SendTranslationKeyBox.Text ?? string.Empty).Trim();
             Properties.Settings.Default.SendTranslationHotkey = string.IsNullOrEmpty(hotkey) ? "F9" : hotkey;
             Properties.Settings.Default.SendTranslationProvider = ProviderName(SendProviderList.SelectedIndex);
-            Properties.Settings.Default.SendDeepSeekApiKey = SendApiKeyBox.Password;
-            Properties.Settings.Default.SendDeepLApiKey = SendDeepLApiKeyBox.Password;
-            Properties.Settings.Default.SendDoubaoApiKey = SendDoubaoApiKeyBox.Password;
-            Properties.Settings.Default.SendZoomApiKey = SendZoomApiKeyBox.Password;
+            Properties.Settings.Default.SendDeepSeekApiKey = SanitizeKey(SendApiKeyBox.Password);
+            Properties.Settings.Default.SendDeepLApiKey = SanitizeKey(SendDeepLApiKeyBox.Password);
+            Properties.Settings.Default.SendDoubaoApiKey = SanitizeKey(SendDoubaoApiKeyBox.Password);
+            Properties.Settings.Default.SendZoomApiKey = SanitizeKey(SendZoomApiKeyBox.Password);
             if (SendModelList.SelectedIndex >= 0)
                 Properties.Settings.Default.SendDeepSeekModel = SendModelList.SelectedItem.ToString();
+            if (SendSpeedList.SelectedItem is ComboBoxItem sendSpeedItem)
+                Properties.Settings.Default.SendDeepSeekReasoningSpeed = (string)sendSpeedItem.Tag;
             Properties.Settings.Default.SendDoubaoModel = string.IsNullOrWhiteSpace(SendDoubaoModelList.Text)
                 ? "doubao-seed-2.0-lite"
                 : SendDoubaoModelList.Text.Trim();
+            Properties.Settings.Default.SendCustomEndpoint = (SendCustomEndpointBox.Text ?? string.Empty).Trim();
+            Properties.Settings.Default.SendCustomProviderName = SendCustomProviderList.SelectedItem as string ?? string.Empty;
+            Properties.Settings.Default.SendCustomApiKey = SanitizeKey(SendCustomApiKeyBox.Password);
+            Properties.Settings.Default.SendCustomModel = (SendCustomModelList.Text ?? string.Empty).Trim();
+            Properties.Settings.Default.SendCustomModels = string.Join(",", _customSendModels);
             Properties.Settings.Default.SendTranslationPrompt = SendPromptBox.Text;
             Properties.Settings.Default.TranslationStyle = TranslationStyleList.SelectedIndex == 1 ? "formal" : TranslationStyleList.SelectedIndex == 2 ? "literary" : "casual";
 
@@ -708,8 +1034,13 @@ namespace Assistant.UI
             DoubaoApiKeyBox.Password = Properties.Settings.Default.DoubaoApiKey;
             ZoomApiKeyBox.Password = Properties.Settings.Default.ZoomApiKey;
             SelectDeepSeekModel(Properties.Settings.Default.DeepSeekModel);
+            SelectDeepSeekSpeed(Properties.Settings.Default.DeepSeekReasoningSpeed);
             SelectDoubaoModel(Properties.Settings.Default.DoubaoModel);
+            SelectCustomProvider(CustomProviderList, CustomEndpointBox, Properties.Settings.Default.CustomProviderName, Properties.Settings.Default.CustomEndpoint);
+            CustomApiKeyBox.Password = Properties.Settings.Default.CustomApiKey;
+            SelectCustomModel(CustomModelList, Properties.Settings.Default.CustomModel);
             TranslationDisplayModeList.SelectedIndex = Properties.Settings.Default.TranslationDisplayMode == "replace" ? 1 : 0;
+            EnableCacheCheckBox.IsChecked = Properties.Settings.Default.EnableTranslationCache;
             TranslationPromptBox.Text = Properties.Settings.Default.TranslationPrompt;
             SendTranslationEnabled.IsChecked = Properties.Settings.Default.SendTranslationEnabled;
             SendTranslationKeyBox.Text = Properties.Settings.Default.SendTranslationHotkey;
@@ -719,7 +1050,11 @@ namespace Assistant.UI
             SendDoubaoApiKeyBox.Password = Properties.Settings.Default.SendDoubaoApiKey;
             SendZoomApiKeyBox.Password = Properties.Settings.Default.SendZoomApiKey;
             SelectSendModel(Properties.Settings.Default.SendDeepSeekModel);
+            SelectSendSpeed(Properties.Settings.Default.SendDeepSeekReasoningSpeed);
             SelectSendDoubaoModel(Properties.Settings.Default.SendDoubaoModel);
+            SelectCustomProvider(SendCustomProviderList, SendCustomEndpointBox, Properties.Settings.Default.SendCustomProviderName, Properties.Settings.Default.SendCustomEndpoint);
+            SendCustomApiKeyBox.Password = Properties.Settings.Default.SendCustomApiKey;
+            SelectCustomModel(SendCustomModelList, Properties.Settings.Default.SendCustomModel);
             SendPromptBox.Text = Properties.Settings.Default.SendTranslationPrompt;
             TranslationStyleList.SelectedIndex = "formal".Equals(Properties.Settings.Default.TranslationStyle) ? 1 : "literary".Equals(Properties.Settings.Default.TranslationStyle) ? 2 : 0;
             TranslationBulkHotkeyBox.Text = Properties.Settings.Default.TranslationBulkHotkey;
@@ -731,6 +1066,15 @@ namespace Assistant.UI
             UpdateSendTranslationState();
             UpdateSendProviderState();
             _loadingTranslationSettings = false;
+
+            // Refresh the model lists once at startup so saved API keys are
+            // applied against the account's real model list right away.
+            ScheduleModelRefresh("DeepSeek");
+            ScheduleModelRefresh("Doubao");
+            ScheduleModelRefresh("Custom");
+            ScheduleModelRefresh("SendDeepSeek");
+            ScheduleModelRefresh("SendDoubao");
+            ScheduleModelRefresh("SendCustom");
         }
 
         /// <summary>
@@ -776,6 +1120,142 @@ namespace Assistant.UI
         }
 
         /// <summary>
+        /// Selects the saved Custom provider preset and fills the endpoint URL
+        /// (unless the player saved a custom endpoint that differs from the
+        /// preset's).
+        /// </summary>
+        private static void SelectCustomProvider(ComboBox combo, TextBox endpointBox, string savedName, string savedEndpoint)
+        {
+            TranslationController.AiProviderPreset preset = FindPreset(savedName);
+            if (preset == null)
+                preset = FindPreset("OpenAI Compatible");
+            if (preset != null)
+            {
+                int idx = combo.Items.IndexOf(preset.Name);
+                if (idx >= 0)
+                    combo.SelectedIndex = idx;
+                if (string.IsNullOrWhiteSpace(savedEndpoint) || string.Equals(savedEndpoint, preset.Endpoint, StringComparison.OrdinalIgnoreCase))
+                    endpointBox.Text = preset.Endpoint;
+                else
+                    endpointBox.Text = savedEndpoint;
+            }
+            else
+                endpointBox.Text = savedEndpoint;
+        }
+
+        /// <summary>
+        /// Fills the Custom provider endpoint box when a preset is picked.
+        /// </summary>
+        private void CustomProviderList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_loadingTranslationSettings)
+                return;
+            FillEndpointFromProvider(CustomProviderList, CustomEndpointBox);
+            SaveTranslationSettings();
+            InvalidateModelCache("Custom");
+            ScheduleModelRefresh("Custom");
+        }
+
+        private void SendCustomProviderList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_loadingTranslationSettings)
+                return;
+            FillEndpointFromProvider(SendCustomProviderList, SendCustomEndpointBox);
+            SaveTranslationSettings();
+            InvalidateModelCache("SendCustom");
+            ScheduleModelRefresh("SendCustom");
+        }
+
+        private static void FillEndpointFromProvider(ComboBox combo, TextBox endpointBox)
+        {
+            TranslationController.AiProviderPreset preset = FindPreset(combo.SelectedItem as string);
+            if (preset != null && !string.IsNullOrWhiteSpace(preset.Endpoint))
+                endpointBox.Text = preset.Endpoint;
+        }
+
+        private static TranslationController.AiProviderPreset FindPreset(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+            foreach (TranslationController.AiProviderPreset preset in TranslationController.AiProviderPresets)
+            {
+                if (string.Equals(preset.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return preset;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Selects the Custom provider model matching the given name in the
+        /// editable combo box (any typed model name works).
+        /// </summary>
+        private static void SelectCustomModel(ComboBox combo, string model)
+        {
+            for (int i = 0; i < combo.Items.Count; ++i)
+            {
+                if (string.Equals(combo.Items[i].ToString(), model, StringComparison.OrdinalIgnoreCase))
+                {
+                    combo.SelectedIndex = i;
+                    return;
+                }
+            }
+            combo.Text = string.IsNullOrWhiteSpace(model) ? "qwen-plus" : model;
+        }
+
+        /// <summary>
+        /// Splits the persisted comma-separated custom model list.
+        /// </summary>
+        private static IEnumerable<string> SplitModelList(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                yield break;
+            foreach (string part in value.Split(','))
+            {
+                string name = part.Trim();
+                if (name.Length > 0)
+                    yield return name;
+            }
+        }
+
+        /// <summary>
+        /// Adds the typed model name to the chat Custom model box and remembers
+        /// it so it is restored on the next start.
+        /// </summary>
+        private void CustomModelAddButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddCustomModel(CustomModelList, _customChatModels);
+            SaveTranslationSettings();
+        }
+
+        /// <summary>
+        /// Adds the typed model name to the send-translation Custom model box
+        /// and remembers it so it is restored on the next start.
+        /// </summary>
+        private void SendCustomModelAddButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddCustomModel(SendCustomModelList, _customSendModels);
+            SaveTranslationSettings();
+        }
+
+        private static void AddCustomModel(ComboBox combo, HashSet<string> store)
+        {
+            string name = (combo.Text ?? string.Empty).Trim();
+            if (name.Length == 0)
+                return;
+            foreach (object item in combo.Items)
+            {
+                if (string.Equals(item.ToString(), name, StringComparison.OrdinalIgnoreCase))
+                {
+                    combo.SelectedItem = item;
+                    return;
+                }
+            }
+            combo.Items.Add(name);
+            store.Add(name);
+            combo.SelectedIndex = combo.Items.Count - 1;
+        }
+
+        /// <summary>
         /// Selects the DeepSeek model matching the given name
         /// </summary>
         private void SelectDeepSeekModel(string model)
@@ -811,6 +1291,219 @@ namespace Assistant.UI
         }
 
         /// <summary>
+        /// Guards the reasoning-speed / model two-way sync against
+        /// re-entrancy while one control updates the other.
+        /// </summary>
+        private bool _syncingDeepSeekSpeed;
+
+        /// <summary>
+        /// Fills a reasoning-speed combo box with the localised options.
+        /// </summary>
+        private static void PopulateSpeedList(ComboBox list)
+        {
+            list.Items.Clear();
+            list.Items.Add(new ComboBoxItem { Tag = "fast", Content = Strings.DeepSeekSpeedFast });
+            list.Items.Add(new ComboBoxItem { Tag = "standard", Content = Strings.DeepSeekSpeedStandard });
+            list.Items.Add(new ComboBoxItem { Tag = "high", Content = Strings.DeepSeekSpeedHigh });
+        }
+
+        /// <summary>
+        /// Selects the reasoning-speed entry matching the saved value.
+        /// </summary>
+        private void SelectDeepSeekSpeed(string speed)
+        {
+            SelectSpeed(DeepSeekSpeedList, speed);
+        }
+
+        private void SelectSendSpeed(string speed)
+        {
+            SelectSpeed(SendSpeedList, speed);
+        }
+
+        private static void SelectSpeed(ComboBox list, string speed)
+        {
+            int index = SpeedIndex(list, speed);
+            list.SelectedIndex = index >= 0 ? index : 0;
+        }
+
+        private static string SpeedValue(ComboBox list)
+        {
+            ComboBoxItem item = list.SelectedItem as ComboBoxItem;
+            return item != null ? (string)item.Tag : "fast";
+        }
+
+        private static int SpeedIndex(ComboBox list, string speed)
+        {
+            for (int i = 0; i < list.Items.Count; ++i)
+            {
+                ComboBoxItem item = list.Items[i] as ComboBoxItem;
+                if (item != null && string.Equals((string)item.Tag, speed, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// The reasoning speed drives the DeepSeek model: fast/standard map to
+        /// deepseek-v4-flash, high maps to deepseek-v4-pro.
+        /// </summary>
+        private void DeepSeekSpeedList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateSpeedDrivenModel(DeepSeekSpeedList, DeepSeekModelList, "deepseek-v4-flash", "deepseek-v4-pro");
+            if (!_loadingTranslationSettings)
+                SaveTranslationSettings();
+        }
+
+        private void SendSpeedList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateSpeedDrivenModel(SendSpeedList, SendModelList, "deepseek-v4-flash", "deepseek-v4-pro");
+            if (!_loadingTranslationSettings)
+                SaveTranslationSettings();
+        }
+
+        private void UpdateSpeedDrivenModel(ComboBox speedList, ComboBox modelList, string flashModel, string proModel)
+        {
+            if (_syncingDeepSeekSpeed || speedList.SelectedItem == null)
+                return;
+            _syncingDeepSeekSpeed = true;
+            try
+            {
+                string speed = SpeedValue(speedList);
+                string target = "high".Equals(speed, StringComparison.OrdinalIgnoreCase) ? proModel : flashModel;
+                int index = -1;
+                for (int i = 0; i < modelList.Items.Count; ++i)
+                {
+                    if (modelList.Items[i].ToString() == target)
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+                if (index >= 0)
+                    modelList.SelectedIndex = index;
+            }
+            finally
+            {
+                _syncingDeepSeekSpeed = false;
+            }
+        }
+
+        /// <summary>
+        /// Logs a confirmation whenever the user switches the translation
+        /// model in any provider dropdown, so it is clear the change took
+        /// effect immediately.
+        /// </summary>
+        private void ModelSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_loadingTranslationSettings)
+                return;
+
+            ComboBox combo = sender as ComboBox;
+            if (combo == null)
+                return;
+
+            string provider;
+            if (combo == DeepSeekModelList) provider = "DeepSeek";
+            else if (combo == DoubaoModelList) provider = "豆包";
+            else if (combo == CustomModelList) provider = "自定义";
+            else if (combo == SendModelList) provider = "发送(DeepSeek)";
+            else if (combo == SendDoubaoModelList) provider = "发送(豆包)";
+            else if (combo == SendCustomModelList) provider = "发送(自定义)";
+            else provider = "未知";
+
+            TranslationController.LogEvent("翻译", "已切换" + provider + "翻译模型：" + (combo.SelectedItem ?? string.Empty));
+        }
+
+        /// <summary>
+        /// Editable model combos only raise SelectionChanged when an actual
+        /// item is picked. When the user types a model name, only the internal
+        /// editable TextBox raises TextChanged (ComboBox itself has no such
+        /// event), so hook the template part to save immediately and keep the
+        /// running translation in sync without a restart.
+        /// </summary>
+        private void HookEditableModelCombo(ComboBox combo)
+        {
+            combo.Loaded += delegate
+            {
+                TextBox box = combo.Template != null ? combo.Template.FindName("PART_EditableTextBox", combo) as TextBox : null;
+                if (box == null)
+                    return;
+                box.TextChanged -= ModelTextChanged;
+                box.TextChanged += ModelTextChanged;
+            };
+        }
+
+        private void ModelTextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_loadingTranslationSettings)
+                return;
+            SaveTranslationSettings();
+        }
+
+        /// <summary>
+        /// Gives feedback when the user finishes typing a model name that was
+        /// not picked from the dropdown. Selection changes are already logged
+        /// by ModelSelectionChanged, so only genuinely typed values are logged.
+        /// </summary>
+        private void EditableModelList_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (_loadingTranslationSettings)
+                return;
+
+            ComboBox combo = sender as ComboBox;
+            if (combo == null)
+                return;
+
+            string text = (combo.Text ?? string.Empty).Trim();
+            string selected = combo.SelectedItem == null ? string.Empty : combo.SelectedItem.ToString();
+            if (string.Equals(text, selected, StringComparison.Ordinal) || string.IsNullOrEmpty(text))
+                return; // picked from the dropdown (already logged) or empty
+
+            string provider;
+            if (combo == DoubaoModelList) provider = "豆包";
+            else if (combo == CustomModelList) provider = "自定义";
+            else if (combo == SendDoubaoModelList) provider = "发送(豆包)";
+            else if (combo == SendCustomModelList) provider = "发送(自定义)";
+            else provider = "未知";
+
+            TranslationController.LogEvent("翻译", "已切换" + provider + "翻译模型（输入）：" + text);
+        }
+
+        /// <summary>
+        /// Keeps the reasoning-speed selection consistent when the model is
+        /// changed manually: pro always means high quality; flash never high.
+        /// </summary>
+        private void DeepSeekModelList_SyncedSpeed(object sender, SelectionChangedEventArgs e)
+        {
+            SyncSpeedFromModel(DeepSeekModelList, DeepSeekSpeedList);
+        }
+
+        private void SendModelList_SyncedSpeed(object sender, SelectionChangedEventArgs e)
+        {
+            SyncSpeedFromModel(SendModelList, SendSpeedList);
+        }
+
+        private void SyncSpeedFromModel(ComboBox modelList, ComboBox speedList)
+        {
+            if (_loadingTranslationSettings || _syncingDeepSeekSpeed || modelList.SelectedItem == null)
+                return;
+            string model = modelList.SelectedItem.ToString();
+            _syncingDeepSeekSpeed = true;
+            try
+            {
+                if (string.Equals(model, "deepseek-v4-pro", StringComparison.OrdinalIgnoreCase))
+                    speedList.SelectedIndex = SpeedIndex(speedList, "high");
+                else if (string.Equals(model, "deepseek-v4-flash", StringComparison.OrdinalIgnoreCase)
+                    && "high".Equals(SpeedValue(speedList), StringComparison.OrdinalIgnoreCase))
+                    speedList.SelectedIndex = SpeedIndex(speedList, "standard");
+            }
+            finally
+            {
+                _syncingDeepSeekSpeed = false;
+            }
+        }
+
+        /// <summary>
         /// Maps a translation provider name to its combo box index
         /// (0 = Google, 1 = DeepSeek, 2 = DeepL, 3 = Doubao, 4 = Zoom)
         /// </summary>
@@ -822,8 +1515,10 @@ namespace Assistant.UI
                 return 2;
             if (string.Equals(provider, "Doubao", StringComparison.OrdinalIgnoreCase))
                 return 3;
-            if (string.Equals(provider, "Zoom", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(provider, "Custom", StringComparison.OrdinalIgnoreCase))
                 return 4;
+            if (string.Equals(provider, "Zoom", StringComparison.OrdinalIgnoreCase))
+                return 5;
             return 0;
         }
 
@@ -839,6 +1534,8 @@ namespace Assistant.UI
             if (index == 3)
                 return "Doubao";
             if (index == 4)
+                return "Custom";
+            if (index == 5)
                 return "Zoom";
             return "Google";
         }
@@ -861,16 +1558,22 @@ namespace Assistant.UI
             bool deepSeek = index == 1;
             bool deepL = index == 2;
             bool doubao = index == 3;
-            bool zoom = index == 4;
+            bool custom = index == 4;
+            bool zoom = index == 5;
 
             DeepSeekApiKeyRow.Visibility = ToVisibility(deepSeek);
             DeepSeekModelRow.Visibility = ToVisibility(deepSeek);
-            TranslationPromptRow.Visibility = ToVisibility(deepSeek || doubao);
+            DeepSeekSpeedRow.Visibility = ToVisibility(deepSeek);
+            TranslationPromptRow.Visibility = ToVisibility(deepSeek || doubao || custom);
             DeepLApiKeyRow.Visibility = ToVisibility(deepL);
             DoubaoApiKeyRow.Visibility = ToVisibility(doubao);
             DoubaoModelRow.Visibility = ToVisibility(doubao);
+            CustomEndpointRow.Visibility = ToVisibility(custom);
+            CustomProviderRow.Visibility = ToVisibility(custom);
+            CustomApiKeyRow.Visibility = ToVisibility(custom);
+            CustomModelRow.Visibility = ToVisibility(custom);
             ZoomApiKeyRow.Visibility = ToVisibility(zoom);
-            TranslationStyleRow.Visibility = ToVisibility(deepSeek || doubao);
+            TranslationStyleRow.Visibility = ToVisibility(deepSeek || doubao || custom);
         }
 
         /// <summary>
@@ -894,14 +1597,20 @@ namespace Assistant.UI
             bool deepSeek = index == 1;
             bool deepL = index == 2;
             bool doubao = index == 3;
-            bool zoom = index == 4;
+            bool custom = index == 4;
+            bool zoom = index == 5;
 
             SendApiKeyRow.Visibility = ToVisibility(deepSeek);
             SendModelRow.Visibility = ToVisibility(deepSeek);
-            SendPromptRow.Visibility = ToVisibility(deepSeek || doubao);
+            SendSpeedRow.Visibility = ToVisibility(deepSeek);
+            SendPromptRow.Visibility = ToVisibility(deepSeek || doubao || custom);
             SendDeepLApiKeyRow.Visibility = ToVisibility(deepL);
             SendDoubaoApiKeyRow.Visibility = ToVisibility(doubao);
             SendDoubaoModelRow.Visibility = ToVisibility(doubao);
+            SendCustomEndpointRow.Visibility = ToVisibility(custom);
+            SendCustomProviderRow.Visibility = ToVisibility(custom);
+            SendCustomApiKeyRow.Visibility = ToVisibility(custom);
+            SendCustomModelRow.Visibility = ToVisibility(custom);
             SendZoomApiKeyRow.Visibility = ToVisibility(zoom);
         }
 
@@ -983,6 +1692,10 @@ namespace Assistant.UI
                 SendDeepLApiKeyRow.Visibility = Visibility.Collapsed;
                 SendDoubaoApiKeyRow.Visibility = Visibility.Collapsed;
                 SendDoubaoModelRow.Visibility = Visibility.Collapsed;
+                SendCustomEndpointRow.Visibility = Visibility.Collapsed;
+                SendCustomProviderRow.Visibility = Visibility.Collapsed;
+                SendCustomApiKeyRow.Visibility = Visibility.Collapsed;
+                SendCustomModelRow.Visibility = Visibility.Collapsed;
                 SendZoomApiKeyRow.Visibility = Visibility.Collapsed;
             }
         }
@@ -1096,8 +1809,11 @@ namespace Assistant.UI
         }
 
         /// <summary>
-        /// Shows a Windows toast notification (balloon tip) for hotkey events.
-        /// Safe to call from any thread; delegates to the UI thread when needed.
+        /// Shows a native Windows balloon tip (the system bubble above the
+        /// tray icon) for hotkey events. Safe to call from any thread;
+        /// delegates to the UI thread when needed. If the bubble is
+        /// suppressed by Windows notification settings, the failure shows up
+        /// in the log and the in-game toast can still provide feedback.
         /// </summary>
         public void ShowWindowsToast(string text)
         {
@@ -1108,13 +1824,12 @@ namespace Assistant.UI
             {
                 try
                 {
-                    if (!_trayIcon.Visible)
-                        _trayIcon.Visible = true;
                     _trayIcon.ShowBalloonTip(3000, Strings.MainTitle, text, System.Windows.Forms.ToolTipIcon.Info);
+                    TranslationController.LogEvent("翻译", "Windows 气泡已显示：" + text);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Balloon tips can fail silently on some systems
+                    TranslationController.LogEvent("翻译", "Windows 气泡显示失败：" + ex.Message);
                 }
             };
 

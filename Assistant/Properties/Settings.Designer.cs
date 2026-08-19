@@ -490,6 +490,18 @@ namespace Assistant.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("fast")]
+        public string DeepSeekReasoningSpeed {
+            get {
+                return ((string)(this["DeepSeekReasoningSpeed"]));
+            }
+            set {
+                this["DeepSeekReasoningSpeed"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("append")]
         public string TranslationDisplayMode {
             get {
@@ -497,6 +509,18 @@ namespace Assistant.Properties {
             }
             set {
                 this["TranslationDisplayMode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableTranslationCache {
+            get {
+                return ((bool)(this["EnableTranslationCache"]));
+            }
+            set {
+                this["EnableTranslationCache"] = value;
             }
         }
         
@@ -569,6 +593,18 @@ namespace Assistant.Properties {
             }
             set {
                 this["SendDeepSeekModel"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("fast")]
+        public string SendDeepSeekReasoningSpeed {
+            get {
+                return ((string)(this["SendDeepSeekReasoningSpeed"]));
+            }
+            set {
+                this["SendDeepSeekReasoningSpeed"] = value;
             }
         }
         
@@ -737,6 +773,126 @@ namespace Assistant.Properties {
             }
             set {
                 this["SendDoubaoModel"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("https://dashscope.aliyuncs.com/compatible-mode/v1")]
+        public string CustomEndpoint {
+            get {
+                return ((string)(this["CustomEndpoint"]));
+            }
+            set {
+                this["CustomEndpoint"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Alibaba Qwen")]
+        public string CustomProviderName {
+            get {
+                return ((string)(this["CustomProviderName"]));
+            }
+            set {
+                this["CustomProviderName"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string CustomApiKey {
+            get {
+                return ((string)(this["CustomApiKey"]));
+            }
+            set {
+                this["CustomApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("qwen-plus")]
+        public string CustomModel {
+            get {
+                return ((string)(this["CustomModel"]));
+            }
+            set {
+                this["CustomModel"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string CustomModels {
+            get {
+                return ((string)(this["CustomModels"]));
+            }
+            set {
+                this["CustomModels"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("https://dashscope.aliyuncs.com/compatible-mode/v1")]
+        public string SendCustomEndpoint {
+            get {
+                return ((string)(this["SendCustomEndpoint"]));
+            }
+            set {
+                this["SendCustomEndpoint"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Alibaba Qwen")]
+        public string SendCustomProviderName {
+            get {
+                return ((string)(this["SendCustomProviderName"]));
+            }
+            set {
+                this["SendCustomProviderName"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendCustomApiKey {
+            get {
+                return ((string)(this["SendCustomApiKey"]));
+            }
+            set {
+                this["SendCustomApiKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("qwen-plus")]
+        public string SendCustomModel {
+            get {
+                return ((string)(this["SendCustomModel"]));
+            }
+            set {
+                this["SendCustomModel"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendCustomModels {
+            get {
+                return ((string)(this["SendCustomModels"]));
+            }
+            set {
+                this["SendCustomModels"] = value;
             }
         }
         

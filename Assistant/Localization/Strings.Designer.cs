@@ -1001,6 +1001,30 @@ namespace Assistant.Localization {
                 return ResourceManager.GetString("DeepSeekModel", resourceCulture);
             }
         }
+        
+        internal static string DeepSeekSpeed {
+            get {
+                return ResourceManager.GetString("DeepSeekSpeed", resourceCulture);
+            }
+        }
+        
+        internal static string DeepSeekSpeedFast {
+            get {
+                return ResourceManager.GetString("DeepSeekSpeedFast", resourceCulture);
+            }
+        }
+        
+        internal static string DeepSeekSpeedStandard {
+            get {
+                return ResourceManager.GetString("DeepSeekSpeedStandard", resourceCulture);
+            }
+        }
+        
+        internal static string DeepSeekSpeedHigh {
+            get {
+                return ResourceManager.GetString("DeepSeekSpeedHigh", resourceCulture);
+            }
+        }
 
         internal static string TranslationDisplayMode {
             get {
@@ -1158,6 +1182,60 @@ namespace Assistant.Localization {
             }
         }
 
+        internal static string TranslationProviderCustom {
+            get {
+                return ResourceManager.GetString("TranslationProviderCustom", resourceCulture);
+            }
+        }
+
+        internal static string CustomProvider {
+            get {
+                return ResourceManager.GetString("CustomProvider", resourceCulture);
+            }
+        }
+
+        internal static string SendCustomProvider {
+            get {
+                return ResourceManager.GetString("SendCustomProvider", resourceCulture);
+            }
+        }
+
+        internal static string CustomEndpoint {
+            get {
+                return ResourceManager.GetString("CustomEndpoint", resourceCulture);
+            }
+        }
+
+        internal static string CustomApiKey {
+            get {
+                return ResourceManager.GetString("CustomApiKey", resourceCulture);
+            }
+        }
+
+        internal static string CustomModel {
+            get {
+                return ResourceManager.GetString("CustomModel", resourceCulture);
+            }
+        }
+
+        internal static string SendCustomEndpoint {
+            get {
+                return ResourceManager.GetString("SendCustomEndpoint", resourceCulture);
+            }
+        }
+
+        internal static string SendCustomApiKey {
+            get {
+                return ResourceManager.GetString("SendCustomApiKey", resourceCulture);
+            }
+        }
+
+        internal static string SendCustomModel {
+            get {
+                return ResourceManager.GetString("SendCustomModel", resourceCulture);
+            }
+        }
+
         internal static string TranslationProviderZoom {
             get {
                 return ResourceManager.GetString("TranslationProviderZoom", resourceCulture);
@@ -1239,6 +1317,18 @@ namespace Assistant.Localization {
         internal static string OverviewCacheInfo {
             get {
                 return ResourceManager.GetString("OverviewCacheInfo", resourceCulture);
+            }
+        }
+
+        internal static string OverviewCacheHits {
+            get {
+                return ResourceManager.GetString("OverviewCacheHits", resourceCulture);
+            }
+        }
+
+        internal static string EnableTranslationCache {
+            get {
+                return ResourceManager.GetString("EnableTranslationCache", resourceCulture);
             }
         }
 

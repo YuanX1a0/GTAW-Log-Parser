@@ -90,6 +90,7 @@ namespace Assistant.Controllers
 
         private static string lastInputText;
         private static string lastTranslated;
+        private static string lastTranslatedInput;
         private static DateTime lastRetranslate = DateTime.UtcNow;
         private static string translatingInput;
         private static string completedTranslation;
@@ -151,6 +152,7 @@ namespace Assistant.Controllers
             {
                 lastInputText = null;
                 lastTranslated = null;
+                lastTranslatedInput = null;
                 translatingInput = null;
                 completedTranslation = null;
                 return;
@@ -169,6 +171,7 @@ namespace Assistant.Controllers
                     Reader.ClearSendOverlay();
                     lastInputText = null;
                     lastTranslated = null;
+                    lastTranslatedInput = null;
                 }
                 else if (action == "apply" && !string.IsNullOrWhiteSpace(message))
                 {
@@ -180,6 +183,7 @@ namespace Assistant.Controllers
                     TranslationController.LogEvent("翻译器", "关闭翻译器窗口");
                     lastInputText = null;
                     lastTranslated = null;
+                    lastTranslatedInput = null;
                     return; // The close button already deactivated the window
                 }
             }
@@ -191,6 +195,7 @@ namespace Assistant.Controllers
                     Reader.ClearSendOverlay();
                 lastInputText = null;
                 lastTranslated = null;
+                lastTranslatedInput = null;
                 translatingInput = null;
                 completedTranslation = null;
                 return;
@@ -212,45 +217,52 @@ namespace Assistant.Controllers
                     Settings.Default.TranslatorWindowTop);
                 lastInputText = inputText;
                 lastTranslated = translated;
+                lastTranslatedInput = inputText;
                 lastRetranslate = DateTime.UtcNow;
                 return;
             }
 
             // Apply a finished background translation if the input has not
-            // changed since the request was sent.
+            // changed since the request was sent; a stale result is discarded
+            // and the current input is re-translated below.
             if (completedTranslation != null)
             {
                 if (string.Equals(inputText, translatingInput, StringComparison.Ordinal))
                 {
                     lastTranslated = completedTranslation;
+                    lastTranslatedInput = inputText;
                     Reader.UpdateSendOverlayTranslated(completedTranslation);
                 }
                 completedTranslation = null;
                 translatingInput = null;
             }
 
+            // Sync the original text as soon as the input changes.
             if (inputText != lastInputText)
             {
                 lastInputText = inputText;
                 Reader.UpdateSendOverlayOriginal(inputText);
+            }
 
-                // Re-translate in the background so the original text keeps
-                // syncing while the provider answers. Throttled: one request
-                // per 1.2 s and only one request in flight at a time.
-                if (translatingInput == null && (DateTime.UtcNow - lastRetranslate).TotalMilliseconds > 1200)
+            // Re-translate in the background whenever the current input has no
+            // matching translation yet. Throttled to one request per 700 ms and
+            // at most one request in flight, so typing never floods the
+            // provider but a stale result is retranslated immediately.
+            if (translatingInput == null
+                && (DateTime.UtcNow - lastRetranslate).TotalMilliseconds > 700
+                && !string.Equals(lastTranslatedInput, inputText, StringComparison.Ordinal))
+            {
+                lastRetranslate = DateTime.UtcNow;
+                translatingInput = inputText;
+                string request = inputText;
+                System.Threading.Tasks.Task.Run(() =>
                 {
-                    lastRetranslate = DateTime.UtcNow;
-                    translatingInput = inputText;
-                    string request = inputText;
-                    System.Threading.Tasks.Task.Run(() =>
+                    string translatedResult = TranslateBody(request);
+                    lock (SyncRoot)
                     {
-                        string translatedResult = TranslateBody(request);
-                        lock (SyncRoot)
-                        {
-                            completedTranslation = translatedResult;
-                        }
-                    });
-                }
+                        completedTranslation = translatedResult;
+                    }
+                });
             }
         }
 
@@ -304,6 +316,11 @@ namespace Assistant.Controllers
                 apiKey = Properties.Settings.Default.SendDoubaoApiKey;
                 model = Properties.Settings.Default.SendDoubaoModel;
             }
+            else if (string.Equals(provider, "Custom", StringComparison.OrdinalIgnoreCase))
+            {
+                apiKey = Properties.Settings.Default.SendCustomApiKey;
+                model = Properties.Settings.Default.SendCustomModel;
+            }
             else if (string.Equals(provider, "Zoom", StringComparison.OrdinalIgnoreCase))
             {
                 // Zoom needs only a bearer token; no model is required
@@ -325,7 +342,9 @@ namespace Assistant.Controllers
                     apiKey,
                     model,
                     Properties.Settings.Default.SendTranslationPrompt,
-                    Properties.Settings.Default.TranslationStyle);
+                    Properties.Settings.Default.TranslationStyle,
+                    Properties.Settings.Default.SendDeepSeekReasoningSpeed,
+                    Properties.Settings.Default.SendCustomEndpoint);
             }
             catch (Exception ex)
             {

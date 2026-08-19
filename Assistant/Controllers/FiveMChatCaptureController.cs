@@ -359,6 +359,11 @@ namespace Assistant.Controllers
                 apiKey = Properties.Settings.Default.DoubaoApiKey;
                 model = Properties.Settings.Default.DoubaoModel;
             }
+            else if (string.Equals(provider, "Custom", StringComparison.OrdinalIgnoreCase))
+            {
+                apiKey = Properties.Settings.Default.CustomApiKey;
+                model = Properties.Settings.Default.CustomModel;
+            }
             else if (string.Equals(provider, "Zoom", StringComparison.OrdinalIgnoreCase))
             {
                 // Zoom needs only a bearer token; no model is required
@@ -401,7 +406,9 @@ namespace Assistant.Controllers
                         apiKey,
                         model,
                         Properties.Settings.Default.TranslationPrompt,
-                        Properties.Settings.Default.TranslationStyle);
+                        Properties.Settings.Default.TranslationStyle,
+                        null,
+                        Properties.Settings.Default.CustomEndpoint);
                     translatedLines = translated.Split('\n');
                 }
                 catch (Exception ex)
@@ -440,7 +447,9 @@ namespace Assistant.Controllers
                                 apiKey,
                                 model,
                                 Properties.Settings.Default.TranslationPrompt,
-                                Properties.Settings.Default.TranslationStyle);
+                                Properties.Settings.Default.TranslationStyle,
+                                null,
+                                Properties.Settings.Default.CustomEndpoint);
                         }
                         catch (Exception ex)
                         {

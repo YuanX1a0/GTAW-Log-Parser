@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -119,6 +120,20 @@ namespace Assistant.Controllers
         private static readonly object CacheSaveLock = new object();
         private static bool cacheDirty;
         private static readonly Timer CacheFlushTimer;
+
+        private static int _cacheHits;
+
+        /// <summary>
+        /// Number of cache hits since the process started.
+        /// </summary>
+        public static int CacheHits
+        {
+            get
+            {
+                lock (CacheLock)
+                    return _cacheHits;
+            }
+        }
 
         /// <summary>
         /// Appends a general event line (timestamped, categorised) to the
@@ -332,6 +347,263 @@ namespace Assistant.Controllers
             "doubao-seed-2.0-pro"
         };
 
+        /// <summary>
+        /// Default model suggestions for the generic OpenAI-compatible
+        /// "Custom" provider. The list is replaced by the account's real
+        /// model list once an API key is entered; players can also add
+        /// their own model names via the + button.
+        /// </summary>
+        public static readonly string[] CustomDefaultModels = new[]
+        {
+            "qwen-turbo",
+            "qwen-plus",
+            "qwen-flash",
+            "qwen-max",
+            "doubao-seed-2.0-lite",
+            "doubao-seed-2.0-pro"
+        };
+
+        /// <summary>
+        /// Fixed model list for the Alibaba Coding Plan subscription.
+        /// The plan keys (sk-sp-... / sk-w...) only work on
+        /// coding.dashscope.aliyuncs.com and the plan has no /models
+        /// discovery endpoint, so the models are hard-coded from the
+        /// official plan page (recommended + more models).
+        /// </summary>
+        public static readonly string[] CodingPlanModels = new[]
+        {
+            "qwen3.7-plus",
+            "qwen3.6-plus",
+            "qwen3.5-plus",
+            "kimi-k2.5",
+            "glm-5",
+            "glm-4.7",
+            "MiniMax-M2.5",
+            "qwen3-max-2026-01-23",
+            "qwen3-coder-next",
+            "qwen3-coder-plus"
+        };
+
+        /// <summary>
+        /// A selectable AI provider preset for the generic Custom service.
+        /// Choosing a preset fills the endpoint URL automatically; entering an
+        /// API key then fetches the real model list. Auth: "bearer" (default,
+        /// OpenAI-compatible), "none" (local servers such as Ollama),
+        /// "anthropic" (Anthropic Messages API), "query" (Google Gemini,
+        /// key passed as a query parameter).
+        /// </summary>
+        public sealed class AiProviderPreset
+        {
+            public string Name;
+            public string Endpoint;
+            public string Auth;
+
+            public AiProviderPreset(string name, string endpoint = null, string auth = "bearer")
+            {
+                Name = name;
+                Endpoint = endpoint ?? string.Empty;
+                Auth = auth;
+            }
+        }
+
+        /// <summary>
+        /// The built-in provider presets (Cline-style). Well-known services
+        /// have a ready endpoint; the rest are selectable but need the player
+        /// to fill in their own endpoint URL.
+        /// </summary>
+        public static readonly AiProviderPreset[] AiProviderPresets = new AiProviderPreset[]
+        {
+            new AiProviderPreset("Cline Usage-Billing"),
+            new AiProviderPreset("ClinePass"),
+            new AiProviderPreset("OpenAI ChatGPT Subscription"),
+            new AiProviderPreset("DeepSeek", "https://api.deepseek.com/v1"),
+            new AiProviderPreset("Anthropic", "https://api.anthropic.com", "anthropic"),
+            new AiProviderPreset("OpenRouter", "https://openrouter.ai/api/v1"),
+            new AiProviderPreset("Ollama", "http://localhost:11434/v1", "none"),
+            new AiProviderPreset("AWS Bedrock"),
+            new AiProviderPreset("OpenAI Compatible"),
+            new AiProviderPreset("LiteLLM"),
+            new AiProviderPreset("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "query"),
+            new AiProviderPreset("302.AI", "https://api.302.ai/v1"),
+            new AiProviderPreset("Abacus"),
+            new AiProviderPreset("abliteration.ai"),
+            new AiProviderPreset("AI Hub Mix"),
+            new AiProviderPreset("AI-ROUTER"),
+            new AiProviderPreset("ai&"),
+            new AiProviderPreset("AKI.IO"),
+            new AiProviderPreset("Alibaba", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            new AiProviderPreset("Alibaba (China)", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            new AiProviderPreset("Alibaba Coding Plan", "https://coding.dashscope.aliyuncs.com/v1"),
+            new AiProviderPreset("Alibaba Coding Plan (China)", "https://coding.dashscope.aliyuncs.com/v1"),
+            new AiProviderPreset("Alibaba Qwen", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            new AiProviderPreset("Alibaba Qwen Code", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            new AiProviderPreset("Alibaba Token Plan", "https://token-plan.cn-beijing.maas.aliyuncs.com/v1"),
+            new AiProviderPreset("Alibaba Token Plan (China)", "https://token-plan.cn-beijing.maas.aliyuncs.com/v1"),
+            new AiProviderPreset("Ambient"),
+            new AiProviderPreset("AnyAPI"),
+            new AiProviderPreset("AskSage"),
+            new AiProviderPreset("Atomic Chat"),
+            new AiProviderPreset("Auriko"),
+            new AiProviderPreset("Bailing"),
+            new AiProviderPreset("Baseten"),
+            new AiProviderPreset("Berget.AI"),
+            new AiProviderPreset("Blue Claw"),
+            new AiProviderPreset("Cerebras", "https://api.cerebras.ai/v1"),
+            new AiProviderPreset("Charm Hyper"),
+            new AiProviderPreset("Chutes"),
+            new AiProviderPreset("Clarifai"),
+            new AiProviderPreset("Claude Code"),
+            new AiProviderPreset("Claudinio"),
+            new AiProviderPreset("CloudFerro Sherlock"),
+            new AiProviderPreset("Cloudflare Workers AI"),
+            new AiProviderPreset("CoralBricks"),
+            new AiProviderPreset("Cortecs"),
+            new AiProviderPreset("CrofAI"),
+            new AiProviderPreset("CrossModel"),
+            new AiProviderPreset("Crusoe"),
+            new AiProviderPreset("D.Run (China)"),
+            new AiProviderPreset("DaoXE"),
+            new AiProviderPreset("Databricks"),
+            new AiProviderPreset("Dify"),
+            new AiProviderPreset("DigitalOcean"),
+            new AiProviderPreset("DInference"),
+            new AiProviderPreset("Doubao", "https://ark.cn-beijing.volces.com/api/v3"),
+            new AiProviderPreset("EBCloud"),
+            new AiProviderPreset("Eden AI"),
+            new AiProviderPreset("EmpirioLabs AI"),
+            new AiProviderPreset("evroc"),
+            new AiProviderPreset("FastRouter"),
+            new AiProviderPreset("Fireworks AI", "https://api.fireworks.ai/inference/v1"),
+            new AiProviderPreset("FreeModel"),
+            new AiProviderPreset("Friendli", "https://api.friendli.ai/server/v1"),
+            new AiProviderPreset("FrogBot"),
+            new AiProviderPreset("GitHub Copilot"),
+            new AiProviderPreset("GitHub Copilot (VS Code LM)"),
+            new AiProviderPreset("GMI Cloud", "https://api.gmicloud.ai/v1"),
+            new AiProviderPreset("Google Vertex AI"),
+            new AiProviderPreset("GreenPT"),
+            new AiProviderPreset("Groq", "https://api.groq.com/openai/v1"),
+            new AiProviderPreset("Helicone", "https://oai.helicone.ai/v1"),
+            new AiProviderPreset("Hetzner"),
+            new AiProviderPreset("HiCap"),
+            new AiProviderPreset("HPC-AI"),
+            new AiProviderPreset("Huawei Cloud MaaS"),
+            new AiProviderPreset("Hugging Face", "https://router.huggingface.co/v1"),
+            new AiProviderPreset("iFlow"),
+            new AiProviderPreset("Impossibl"),
+            new AiProviderPreset("Inception"),
+            new AiProviderPreset("Inceptron"),
+            new AiProviderPreset("Inference"),
+            new AiProviderPreset("InferX"),
+            new AiProviderPreset("Infomaniak"),
+            new AiProviderPreset("IO.NET"),
+            new AiProviderPreset("Jiekou.AI"),
+            new AiProviderPreset("Kenari"),
+            new AiProviderPreset("Kilo Gateway"),
+            new AiProviderPreset("Kimi For Coding", "https://api.moonshot.cn/v1"),
+            new AiProviderPreset("KUAE Cloud Coding Plan"),
+            new AiProviderPreset("Lilac"),
+            new AiProviderPreset("Llama"),
+            new AiProviderPreset("LLM Gateway"),
+            new AiProviderPreset("LLMTR"),
+            new AiProviderPreset("LM Studio", "http://localhost:1234/v1", "none"),
+            new AiProviderPreset("LongCat"),
+            new AiProviderPreset("LucidQuery"),
+            new AiProviderPreset("Lynkr"),
+            new AiProviderPreset("Meganova"),
+            new AiProviderPreset("Meta"),
+            new AiProviderPreset("MiniMax (minimax.io)", "https://api.minimax.io/v1"),
+            new AiProviderPreset("MiniMax (minimaxi.com)", "https://api.minimaxi.com/v1"),
+            new AiProviderPreset("MiniMax Token Plan (minimax.io)"),
+            new AiProviderPreset("MiniMax Token Plan (minimaxi.com)"),
+            new AiProviderPreset("Mistral", "https://api.mistral.ai/v1"),
+            new AiProviderPreset("Mixlayer"),
+            new AiProviderPreset("Moark"),
+            new AiProviderPreset("Modal"),
+            new AiProviderPreset("Model Oracle AI"),
+            new AiProviderPreset("Modelis"),
+            new AiProviderPreset("ModelScope", "https://api-inference.modelscope.cn/v1"),
+            new AiProviderPreset("Moonshot AI", "https://api.moonshot.cn/v1"),
+            new AiProviderPreset("Moonshot AI (China)", "https://api.moonshot.cn/v1"),
+            new AiProviderPreset("Morph"),
+            new AiProviderPreset("NanoGPT"),
+            new AiProviderPreset("NEAR AI Cloud"),
+            new AiProviderPreset("Nebius Token Factory", "https://api.nebius.com/v1"),
+            new AiProviderPreset("Neon"),
+            new AiProviderPreset("Neuralwatt"),
+            new AiProviderPreset("Nous Research"),
+            new AiProviderPreset("Nova"),
+            new AiProviderPreset("NovitaAI", "https://api.novita.ai/v3/openai"),
+            new AiProviderPreset("Nvidia", "https://integrate.api.nvidia.com/v1"),
+            new AiProviderPreset("Ofox"),
+            new AiProviderPreset("OpenAI", "https://api.openai.com/v1"),
+            new AiProviderPreset("OpenAI Codex CLI"),
+            new AiProviderPreset("OpenCode"),
+            new AiProviderPreset("OpenCode Go"),
+            new AiProviderPreset("Oracle Code Assist"),
+            new AiProviderPreset("OrcaRouter"),
+            new AiProviderPreset("OVHcloud AI Endpoints"),
+            new AiProviderPreset("Perplexity Agent"),
+            new AiProviderPreset("Pioneer"),
+            new AiProviderPreset("Poe"),
+            new AiProviderPreset("Poolside", "https://api.poolside.ai/v1"),
+            new AiProviderPreset("Privatemode AI"),
+            new AiProviderPreset("QiHang"),
+            new AiProviderPreset("Qiniu"),
+            new AiProviderPreset("Regolo AI"),
+            new AiProviderPreset("Requesty", "https://router.requesty.ai/v1"),
+            new AiProviderPreset("routing.run"),
+            new AiProviderPreset("Sakana AI"),
+            new AiProviderPreset("SambaNova", "https://api.sambanova.ai/v1"),
+            new AiProviderPreset("SAP AI Core"),
+            new AiProviderPreset("Sarvam AI"),
+            new AiProviderPreset("Scaleway"),
+            new AiProviderPreset("SCX.ai"),
+            new AiProviderPreset("SiliconFlow", "https://api.siliconflow.cn/v1"),
+            new AiProviderPreset("SiliconFlow (China)", "https://api.siliconflow.cn/v1"),
+            new AiProviderPreset("Snowflake Cortex"),
+            new AiProviderPreset("STACKIT"),
+            new AiProviderPreset("StepFun (China)", "https://api.stepfun.com/v1"),
+            new AiProviderPreset("StepFun (Global)", "https://api.stepfun.com/v1"),
+            new AiProviderPreset("StepFun Step Plan (China)"),
+            new AiProviderPreset("StepFun Step Plan (Global)"),
+            new AiProviderPreset("Subconscious"),
+            new AiProviderPreset("submodel"),
+            new AiProviderPreset("Synthetic"),
+            new AiProviderPreset("Tencent Coding Plan (China)"),
+            new AiProviderPreset("Tencent Token Plan"),
+            new AiProviderPreset("Tencent TokenHub"),
+            new AiProviderPreset("TensorX"),
+            new AiProviderPreset("The Grid AI"),
+            new AiProviderPreset("Thinking Machines"),
+            new AiProviderPreset("Tinfoil"),
+            new AiProviderPreset("Together AI", "https://api.together.xyz/v1"),
+            new AiProviderPreset("TrustedRouter"),
+            new AiProviderPreset("Umans AI"),
+            new AiProviderPreset("Umans AI Coding Plan"),
+            new AiProviderPreset("UnoRouter"),
+            new AiProviderPreset("Upstage", "https://api.upstage.ai/v1/solar"),
+            new AiProviderPreset("Vercel AI Gateway", "https://gateway.vercel.ai/v1"),
+            new AiProviderPreset("Vercel V0"),
+            new AiProviderPreset("Vivgrid"),
+            new AiProviderPreset("Vultr"),
+            new AiProviderPreset("Wafer"),
+            new AiProviderPreset("Weights & Biases"),
+            new AiProviderPreset("xAI", "https://api.x.ai/v1"),
+            new AiProviderPreset("Xiaomi"),
+            new AiProviderPreset("Xiaomi Token Plan (China)"),
+            new AiProviderPreset("Xiaomi Token Plan (Europe)"),
+            new AiProviderPreset("Xiaomi Token Plan (Singapore)"),
+            new AiProviderPreset("Xpersona"),
+            new AiProviderPreset("Z.AI"),
+            new AiProviderPreset("Z.AI Coding Plan"),
+            new AiProviderPreset("Zeldoc"),
+            new AiProviderPreset("Zenifra"),
+            new AiProviderPreset("ZenMux"),
+            new AiProviderPreset("Zhipu AI", "https://open.bigmodel.cn/api/paas/v4"),
+            new AiProviderPreset("Zhipu AI Coding Plan")
+        };
+
         public static string GetLanguageDisplayName(string code)
         {
             foreach (KeyValuePair<string, string> pair in TargetLanguages)
@@ -355,33 +627,44 @@ namespace Assistant.Controllers
         /// Supported styles: casual (口语), formal (正式), literary (书面).
         /// Only AI providers (DeepSeek) honour the style; Google ignores it.
         /// </summary>
-        public static string Translate(string text, string targetLanguage, string sourceLanguage, string provider, string apiKey, string model, string prompt, string style)
+        public static string Translate(string text, string targetLanguage, string sourceLanguage, string provider, string apiKey, string model, string prompt, string style, string reasoningSpeed = null, string endpoint = null)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return string.Empty;
 
             TranslationStats.RecordTranslation(text);
 
-            string cacheKey = "p:" + (provider ?? string.Empty) + "|s:" + (sourceLanguage ?? string.Empty) + "|t:" + (targetLanguage ?? string.Empty)
-                + "|m:" + (model ?? string.Empty) + "|y:" + (style ?? string.Empty) + "|q:" + (prompt ?? string.Empty) + "|" + text;
-            string cached = GetCachedTranslation(cacheKey);
-            if (cached != null)
-                return cached;
+            string cacheKey = "p:" + (provider ?? string.Empty) + "|e:" + (endpoint ?? string.Empty) + "|s:" + (sourceLanguage ?? string.Empty) + "|t:" + (targetLanguage ?? string.Empty)
+                + "|m:" + (model ?? string.Empty) + "|y:" + (style ?? string.Empty) + "|r:" + (reasoningSpeed ?? string.Empty) + "|q:" + (prompt ?? string.Empty) + "|" + text;
+            if (Assistant.Properties.Settings.Default.EnableTranslationCache)
+            {
+                string cached = GetCachedTranslation(cacheKey);
+                if (cached != null)
+                {
+                    lock (CacheLock)
+                        ++_cacheHits;
+                    return cached;
+                }
+            }
 
             string result;
             if (string.Equals(provider, "DeepSeek", StringComparison.OrdinalIgnoreCase))
-                result = TranslateWithDeepSeek(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+                result = TranslateWithDeepSeek(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style,
+                    reasoningSpeed ?? Assistant.Properties.Settings.Default.DeepSeekReasoningSpeed);
             else if (string.Equals(provider, "DeepL", StringComparison.OrdinalIgnoreCase))
                 result = TranslateWithDeepL(text, targetLanguage, sourceLanguage, apiKey);
             else if (string.Equals(provider, "Doubao", StringComparison.OrdinalIgnoreCase))
                 result = TranslateWithDoubao(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+            else if (string.Equals(provider, "Custom", StringComparison.OrdinalIgnoreCase))
+                result = TranslateWithCustom(text, targetLanguage, sourceLanguage, apiKey, endpoint, model, prompt, style);
             else if (string.Equals(provider, "Zoom", StringComparison.OrdinalIgnoreCase))
                 result = TranslateWithZoom(text, targetLanguage, sourceLanguage, apiKey);
             else
                 result = Translate(text, targetLanguage, sourceLanguage);
 
             LogEvent("翻译", (string.IsNullOrEmpty(provider) ? "Google" : provider) + " | " + Short(text) + " => " + Short(result));
-            CacheTranslation(cacheKey, result);
+            if (Assistant.Properties.Settings.Default.EnableTranslationCache)
+                CacheTranslation(cacheKey, result);
             return result;
         }
 
@@ -396,9 +679,16 @@ namespace Assistant.Controllers
                 return string.Empty;
 
             string cacheKey = "g|s:" + (sourceLanguage ?? string.Empty) + "|t:" + (targetLanguage ?? string.Empty) + "|" + text;
-            string cached = GetCachedTranslation(cacheKey);
-            if (cached != null)
-                return cached;
+            if (Assistant.Properties.Settings.Default.EnableTranslationCache)
+            {
+                string cached = GetCachedTranslation(cacheKey);
+                if (cached != null)
+                {
+                    lock (CacheLock)
+                        ++_cacheHits;
+                    return cached;
+                }
+            }
 
             List<string> protectedTokens = new List<string>();
             string protectedText = ProtectTokens(text, protectedTokens);
@@ -422,7 +712,8 @@ namespace Assistant.Controllers
             TranslationStats.RecordApiCallEstimated(text);
 
             string result = NormalizePunctuation(RestoreTokens(translated, protectedTokens));
-            CacheTranslation(cacheKey, result);
+            if (Assistant.Properties.Settings.Default.EnableTranslationCache)
+                CacheTranslation(cacheKey, result);
             return result;
         }
 
@@ -431,13 +722,16 @@ namespace Assistant.Controllers
         /// </summary>
         public static string TranslateWithDeepSeek(string text, string targetLanguage, string sourceLanguage, string apiKey, string model, string prompt)
         {
-            return TranslateWithDeepSeek(text, targetLanguage, sourceLanguage, apiKey, model, prompt, "casual");
+            return TranslateWithDeepSeek(text, targetLanguage, sourceLanguage, apiKey, model, prompt, "casual", null);
         }
 
         /// <summary>
         /// Translates the text using a DeepSeek chat model with a translation style.
+        /// reasoningSpeed controls how much the model thinks before answering:
+        /// "fast" (low effort, quickest), "standard" (default) or "high"
+        /// (deep reasoning, slowest but most careful).
         /// </summary>
-        public static string TranslateWithDeepSeek(string text, string targetLanguage, string sourceLanguage, string apiKey, string model, string prompt, string style)
+        public static string TranslateWithDeepSeek(string text, string targetLanguage, string sourceLanguage, string apiKey, string model, string prompt, string style, string reasoningSpeed = null)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return string.Empty;
@@ -461,7 +755,7 @@ namespace Assistant.Controllers
             string systemPrompt = "You are a chat translator. " + sourceNote + " Translate the user's message into " + languageName + " (" + targetLanguage + "). Output only the translation without any explanations or quotes. Never translate or alter the GTB placeholder tokens. Never translate proper names, player names, place names, brand names, group names or common abbreviations (e.g. OOC, LFG, EMS, SASP); keep them exactly as written. Keep the overall meaning and tone of the original message. " + styleNote;
             if (!string.IsNullOrWhiteSpace(prompt))
                 systemPrompt += " " + prompt.Trim();
-            string payload = new JavaScriptSerializer().Serialize(new Dictionary<string, object>
+            Dictionary<string, object> payloadDict = new Dictionary<string, object>
             {
                 { "model", model },
                 { "messages", new object[]
@@ -473,7 +767,12 @@ namespace Assistant.Controllers
                 { "temperature", 0.3 },
                 { "stream", false },
                 { "max_tokens", 4096 }
-            });
+            };
+            if ("fast".Equals(reasoningSpeed, StringComparison.OrdinalIgnoreCase))
+                payloadDict["reasoning_effort"] = "low";
+            else if ("high".Equals(reasoningSpeed, StringComparison.OrdinalIgnoreCase))
+                payloadDict["reasoning_effort"] = "high";
+            string payload = new JavaScriptSerializer().Serialize(payloadDict);
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(DeepSeekChatUrl);
             request.Method = "POST";
@@ -563,6 +862,215 @@ namespace Assistant.Controllers
             if (string.IsNullOrWhiteSpace(model))
                 model = "doubao-seed-2.0-lite";
             return PostOpenAiCompatible(DoubaoChatUrl, text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+        }
+
+        /// <summary>
+        /// Translates the text using any OpenAI-compatible service (Aliyun
+        /// Bailian / DashScope, DeepSeek, Ollama, LM Studio, ...). The user
+        /// provides the base endpoint URL, API key and model name.
+        /// </summary>
+        public static string TranslateWithCustom(string text, string targetLanguage, string sourceLanguage, string apiKey, string endpoint, string model, string prompt)
+        {
+            return TranslateWithCustom(text, targetLanguage, sourceLanguage, apiKey, endpoint, model, prompt, "casual");
+        }
+
+        /// <summary>
+        /// Translates the text using any OpenAI-compatible service with a style.
+        /// Anthropic endpoints use the Messages API automatically; Google
+        /// Gemini (generativelanguage.googleapis.com) passes the key as a
+        /// query parameter.
+        /// </summary>
+        public static string TranslateWithCustom(string text, string targetLanguage, string sourceLanguage, string apiKey, string endpoint, string model, string prompt, string style)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return string.Empty;
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("API key is missing.");
+            if (string.IsNullOrWhiteSpace(endpoint))
+                throw new InvalidOperationException("Endpoint is missing.");
+            string baseUrl = endpoint.TrimEnd('/');
+            if (baseUrl.IndexOf("api.anthropic.com", StringComparison.OrdinalIgnoreCase) >= 0)
+                return TranslateWithAnthropic(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+            if (string.IsNullOrWhiteSpace(model))
+                model = "qwen-plus";
+            string chatUrl = baseUrl + "/chat/completions";
+            if (baseUrl.IndexOf("generativelanguage.googleapis.com", StringComparison.OrdinalIgnoreCase) >= 0)
+                chatUrl += "?key=" + Uri.EscapeDataString(apiKey);
+            return PostOpenAiCompatible(chatUrl, text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+        }
+
+        /// <summary>
+        /// Translates the text using the Anthropic Messages API
+        /// (POST /v1/messages with x-api-key and anthropic-version headers).
+        /// </summary>
+        public static string TranslateWithAnthropic(string text, string targetLanguage, string sourceLanguage, string apiKey, string model, string prompt, string style)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return string.Empty;
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("Anthropic API key is missing.");
+            if (string.IsNullOrWhiteSpace(model))
+                model = "claude-3-7-sonnet-20250219";
+
+            List<string> protectedTokens = new List<string>();
+            string protectedText = ProtectTokens(text, protectedTokens);
+
+            string languageName = GetLanguageDisplayName(targetLanguage);
+            string sourceNote = string.IsNullOrWhiteSpace(sourceLanguage)
+                ? "Detect the source language automatically."
+                : "The source language is " + GetLanguageDisplayName(sourceLanguage) + " (" + sourceLanguage + ").";
+            string styleNote = "casual".Equals(style, StringComparison.OrdinalIgnoreCase)
+                ? "Use a casual, conversational tone."
+                : "formal".Equals(style, StringComparison.OrdinalIgnoreCase)
+                    ? "Use a formal, polite and proper tone."
+                    : "Use a literary, written and refined tone.";
+            string systemPrompt = "You are a chat translator. " + sourceNote + " Translate the user's message into " + languageName + " (" + targetLanguage + "). Output only the translation without any explanations or quotes. Never translate or alter the GTB placeholder tokens. Never translate proper names, player names, place names, brand names, group names or common abbreviations (e.g. OOC, LFG, EMS, SASP); keep them exactly as written. Keep the overall meaning and tone of the original message. " + styleNote;
+            if (!string.IsNullOrWhiteSpace(prompt))
+                systemPrompt += " " + prompt.Trim();
+
+            string payload = new JavaScriptSerializer().Serialize(new Dictionary<string, object>
+            {
+                { "model", model },
+                { "max_tokens", 2048 },
+                { "system", systemPrompt },
+                { "messages", new object[]
+                    {
+                        new Dictionary<string, object> { { "role", "user" }, { "content", protectedText } }
+                    }
+                }
+            });
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://api.anthropic.com/v1/messages");
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.UserAgent = "Mozilla/5.0";
+            request.Timeout = 30000;
+            request.Headers["x-api-key"] = apiKey;
+            request.Headers["anthropic-version"] = "2023-06-01";
+
+            byte[] body = Encoding.UTF8.GetBytes(payload);
+            using (Stream requestStream = request.GetRequestStream())
+                requestStream.Write(body, 0, body.Length);
+
+            string responseJson;
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            using (Stream stream = response.GetResponseStream())
+            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                responseJson = reader.ReadToEnd();
+
+            string translated = string.Empty;
+            try
+            {
+                Dictionary<string, object> parsed = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(responseJson);
+                if (parsed != null && parsed.ContainsKey("content") && parsed["content"] is ArrayList blocks)
+                {
+                    foreach (object block in blocks)
+                    {
+                        if (block is Dictionary<string, object> item && item.ContainsKey("text") && item["text"] is string textPart)
+                            translated += textPart;
+                    }
+                }
+            }
+            catch { /* keep empty on parse failure */ }
+            TranslationStats.RecordApiCall(0);
+            return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
+        }
+
+        /// <summary>
+        /// Fetches the models available to the given API key for the
+        /// OpenAI-compatible providers (DeepSeek / Doubao / Custom). Returns
+        /// null when the provider has no model-list endpoint or on any
+        /// failure, so the caller can keep its built-in static list.
+        /// </summary>
+        public static List<string> FetchModelList(string provider, string apiKey, string endpoint = null)
+        {
+            // The send-translation panel reuses the same services under a
+            // "Send" prefix; normalize it so model discovery behaves exactly
+            // like the chat panel with the same key/endpoint.
+            if (provider != null && provider.StartsWith("Send", StringComparison.OrdinalIgnoreCase) && provider.Length > 4)
+                provider = provider.Substring(4);
+            string url;
+            string auth = "bearer";
+            if (string.Equals(provider, "DeepSeek", StringComparison.OrdinalIgnoreCase))
+                url = "https://api.deepseek.com/v1/models";
+            else if (string.Equals(provider, "Doubao", StringComparison.OrdinalIgnoreCase))
+                url = "https://ark.cn-beijing.volces.com/api/v3/models";
+            else if (string.Equals(provider, "Custom", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(endpoint))
+                    return null;
+                string baseUrl = endpoint.TrimEnd('/');
+                if (baseUrl.IndexOf("coding.dashscope.aliyuncs.com", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // Alibaba Coding Plan has no /models endpoint (all paths
+                    // return 404); the plan ships a fixed model menu.
+                    LogEvent("翻译", "模型列表（" + provider + "）：检测到阿里云 Coding Plan 端点，已使用套餐固定模型列表");
+                    return new List<string>(CodingPlanModels);
+                }
+                if (baseUrl.IndexOf("api.anthropic.com", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // Anthropic model list: x-api-key + anthropic-version.
+                    auth = "anthropic";
+                    if (!baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+                        baseUrl += "/v1";
+                    url = baseUrl + "/models";
+                }
+                else
+                {
+                    url = baseUrl + "/models";
+                    if (baseUrl.IndexOf("generativelanguage.googleapis.com", StringComparison.OrdinalIgnoreCase) >= 0)
+                        auth = "query"; // Gemini: key goes in the query string
+                }
+            }
+            else
+                return null;
+            if (string.IsNullOrWhiteSpace(apiKey) && !string.Equals(auth, "none", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            if (string.Equals(auth, "query", StringComparison.OrdinalIgnoreCase))
+                url += (url.Contains("?") ? "&" : "?") + "key=" + Uri.EscapeDataString(apiKey);
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "GET";
+            request.UserAgent = "Mozilla/5.0";
+            request.Timeout = 15000;
+            if (string.Equals(auth, "anthropic", StringComparison.OrdinalIgnoreCase))
+            {
+                request.Headers["x-api-key"] = apiKey;
+                request.Headers["anthropic-version"] = "2023-06-01";
+            }
+            else if (!string.IsNullOrWhiteSpace(apiKey))
+                request.Headers["Authorization"] = "Bearer " + apiKey;
+
+            string responseJson;
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            using (Stream stream = response.GetResponseStream())
+            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                responseJson = reader.ReadToEnd();
+
+            List<string> models = new List<string>();
+            Dictionary<string, object> parsed = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(responseJson);
+            if (parsed != null && parsed.ContainsKey("data") && parsed["data"] is ArrayList entries)
+            {
+                foreach (object entry in entries)
+                {
+                    if (entry is Dictionary<string, object> item && item.ContainsKey("id") && item["id"] is string id
+                        && !string.IsNullOrWhiteSpace(id))
+                    {
+                        models.Add(id);
+                    }
+                }
+            }
+            if (models.Count == 0)
+            {
+                // Surface the provider's actual reply so a "no models" result
+                // can be diagnosed without guessing at the response shape.
+                string body = responseJson ?? string.Empty;
+                if (body.Length > 300)
+                    body = body.Substring(0, 300) + "...";
+                LogEvent("翻译", "模型列表解析失败（" + provider + "）：接口响应未包含可用的 data[].id，原始响应：" + body);
+            }
+            return models;
         }
 
         /// <summary>
@@ -723,7 +1231,48 @@ namespace Assistant.Controllers
             string systemPrompt = "You are a chat translator. " + sourceNote + " Translate the user's message into " + languageName + " (" + targetLanguage + "). Output only the translation without any explanations or quotes. Never translate or alter the GTB placeholder tokens. Never translate proper names, player names, place names, brand names, group names or common abbreviations (e.g. OOC, LFG, EMS, SASP); keep them exactly as written. Keep the overall meaning and tone of the original message. " + styleNote;
             if (!string.IsNullOrWhiteSpace(prompt))
                 systemPrompt += " " + prompt.Trim();
-            string payload = new JavaScriptSerializer().Serialize(new Dictionary<string, object>
+
+            // Bailian compatible-mode (dashscope) rejects the system role, so
+            // send its merged form directly to avoid one failed round-trip.
+            bool noSystem = url.IndexOf("dashscope.aliyuncs.com", StringComparison.OrdinalIgnoreCase) >= 0;
+            string payload = noSystem
+                ? BuildNoSystemChatPayload(model, systemPrompt, protectedText)
+                : BuildChatPayload(model, systemPrompt, protectedText);
+
+            string responseJson;
+            try
+            {
+                responseJson = SendChatRequestBody(url, payload, apiKey);
+            }
+            catch (WebException ex)
+            {
+                string errorBody = ReadErrorBody(ex);
+                if (!noSystem && errorBody.IndexOf("Role must be in [user, assistant]", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // Unknown provider that also rejects the system role -
+                    // retry once with the prompt merged into the user message.
+                    responseJson = SendChatRequestBody(url, BuildNoSystemChatPayload(model, systemPrompt, protectedText), apiKey);
+                }
+                else
+                {
+                    // Surface the provider's actual error body (e.g. "model not
+                    // found") so 400/401 failures can be diagnosed from the log.
+                    throw new WebException(ex.Message + " | " + errorBody, ex);
+                }
+            }
+
+            string translated = ParseDeepSeekResponse(responseJson);
+            TranslationStats.RecordApiCall(ParseUsageTokens(responseJson));
+            return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
+        }
+
+        /// <summary>
+        /// Builds a chat-completions JSON body with the instructions in the
+        /// system role (supported by DeepSeek, Doubao and most gateways).
+        /// </summary>
+        private static string BuildChatPayload(string model, string systemPrompt, string protectedText)
+        {
+            return new JavaScriptSerializer().Serialize(new Dictionary<string, object>
             {
                 { "model", model },
                 { "messages", new object[]
@@ -734,9 +1283,52 @@ namespace Assistant.Controllers
                 },
                 { "temperature", 0.3 },
                 { "stream", false },
-                { "max_tokens", 4096 }
+                { "max_tokens", ComputeMaxTokens(protectedText) }
             });
+        }
 
+        /// <summary>
+        /// Builds a chat-completions JSON body for providers that only accept
+        /// the [user, assistant] roles. The instructions are merged into the
+        /// user message with explicit markers so the model never translates
+        /// the instructions along with the actual text.
+        /// </summary>
+        private static string BuildNoSystemChatPayload(string model, string systemPrompt, string protectedText)
+        {
+            string mergedContent = "<instructions>\n" + systemPrompt
+                + "\n</instructions>\n\n<text>\n" + protectedText
+                + "\n</text>\n\nOutput ONLY the translation of the <text> content. Never repeat, explain or translate the <instructions>.";
+            return new JavaScriptSerializer().Serialize(new Dictionary<string, object>
+            {
+                { "model", model },
+                { "messages", new object[]
+                    {
+                        new Dictionary<string, object> { { "role", "user" }, { "content", mergedContent } }
+                    }
+                },
+                { "temperature", 0.3 },
+                { "stream", false },
+                { "max_tokens", ComputeMaxTokens(protectedText) }
+            });
+        }
+
+        /// <summary>
+        /// Computes a max_tokens value that stays inside the provider limits
+        /// (most OpenAI-compatible gateways cap it at 3072) while leaving
+        /// enough room for the translation output.
+        /// </summary>
+        private static int ComputeMaxTokens(string text)
+        {
+            int estimatedInput = Math.Max(1, (text.Length + 3) / 4);
+            int needed = Math.Max(256, estimatedInput * 2 + 128);
+            return Math.Min(3072, needed);
+        }
+
+        /// <summary>
+        /// Sends a JSON chat-completions body and returns the raw response text.
+        /// </summary>
+        private static string SendChatRequestBody(string url, string payload, string apiKey)
+        {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "POST";
             request.ContentType = "application/json";
@@ -749,15 +1341,33 @@ namespace Assistant.Controllers
             using (Stream requestStream = request.GetRequestStream())
                 requestStream.Write(body, 0, body.Length);
 
-            string responseJson;
             using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
             using (Stream stream = response.GetResponseStream())
             using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
-                responseJson = reader.ReadToEnd();
+                return reader.ReadToEnd();
+        }
 
-            string translated = ParseDeepSeekResponse(responseJson);
-            TranslationStats.RecordApiCall(ParseUsageTokens(responseJson));
-            return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
+        /// <summary>
+        /// Reads the response body of a failed HTTP request (truncated) so
+        /// the real provider error message ends up in the log.
+        /// </summary>
+        private static string ReadErrorBody(WebException ex)
+        {
+            try
+            {
+                if (ex.Response == null)
+                    return string.Empty;
+                using (Stream stream = ex.Response.GetResponseStream())
+                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                {
+                    string detail = reader.ReadToEnd();
+                    return detail.Length > 300 ? detail.Substring(0, 300) + "…" : detail;
+                }
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         /// <summary>
