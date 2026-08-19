@@ -43,6 +43,7 @@
   "Language": "Language",
   "LanguageInfo": "The chosen language will be used to extract the chat log from the correct server.\n\nThis means that if you chose English, you will only be able to parse the chat log generated from the English server. You will need to change the language of the application if you wish to parse other chat logs.",
   "LoadedAt": " at {0}",
+  "LogTooLarge": "Log too large, showing only the latest {0} lines",
   "MainIP": "51.178.79.228_22005",
   "MinimizeInsteadOfClose": "Closing the parser will prevent the automatic backups from happening.\n\nWould you like to minimize the parser to the system tray instead?",
   "MinutePlural": "minutes",

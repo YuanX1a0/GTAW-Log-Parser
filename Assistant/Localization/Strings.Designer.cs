@@ -464,6 +464,15 @@ namespace Assistant.Localization {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Log too large, showing only the latest {0} lines.
+        /// </summary>
+        internal static string LogTooLarge {
+            get {
+                return ResourceManager.GetString("LogTooLarge", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to 51.178.79.228_22005.
         /// </summary>
         internal static string MainIP {

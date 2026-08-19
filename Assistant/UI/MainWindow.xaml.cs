@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Windows.Media;
 using Microsoft.Win32;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Assistant.UI
 {
@@ -26,6 +27,14 @@ namespace Assistant.UI
         private static bool isRestarting;
         private System.Windows.Threading.DispatcherTimer _autoParseTimer;
         private string _lastAutoParsedLog = string.Empty;
+
+        // Holds the full parsed log so the on-screen text box can be truncated
+        // for display while "Save" still writes the complete contents.
+        private string _lastParsedFull = string.Empty;
+        // Maximum lines shown in the parsed text box; beyond this the newest
+        // lines are shown and the rest are kept only in _lastParsedFull.
+        private const int MaxDisplayLines = 15000;
+        private bool _autoParseBusy;
 
         // Debounced model-list refresh: when an API key is typed, the model
         // combo boxes are repopulated from the actual account (DeepSeek /
@@ -617,14 +626,25 @@ namespace Assistant.UI
         }
 
         /// <summary>
-        /// Parses the current chat log and sets
-        /// the text of the main text box to it
+        /// Parses the current chat log on a background thread so a very large
+        /// log never freezes the UI, then shows the text (truncated for
+        /// display; the full contents stay available for saving).
         /// </summary>
-        private void Parse_Click(object sender, RoutedEventArgs e)
+        private async void Parse_Click(object sender, RoutedEventArgs e)
         {
-            AppController.InitializeServerIp();
-            Parsed.Text = AppController.ParseChatLog(false, true);
-            _lastAutoParsedLog = Parsed.Text;
+            Parse.IsEnabled = false;
+            try
+            {
+                AppController.InitializeServerIp();
+                string full = await Task.Run(() => AppController.ParseChatLog(false, true));
+                _lastParsedFull = full;
+                _lastAutoParsedLog = full;
+                Parsed.Text = TruncateForDisplay(full);
+            }
+            finally
+            {
+                Parse.IsEnabled = true;
+            }
         }
 
         /// <summary>
@@ -657,32 +677,73 @@ namespace Assistant.UI
         }
 
         /// <summary>
-        /// Periodically reads the captured chat log and updates
-        /// the main text box only when the content has changed.
+        /// Periodically reads the captured chat log on a background thread and
+        /// updates the main text box only when the content has changed.
         /// Follows new messages (scrolls to bottom) only while the
         /// user is at the bottom; keeps the position when scrolling up.
         /// </summary>
-        private void AutoParseTimer_Tick(object sender, EventArgs e)
+        private async void AutoParseTimer_Tick(object sender, EventArgs e)
         {
-            string parsed = AppController.ParseChatLog(false);
-            if (parsed == _lastAutoParsedLog)
+            if (_autoParseBusy)
                 return;
-
-            ScrollViewer viewer = FindVisualChild<ScrollViewer>(Parsed);
-            bool followBottom = viewer == null
-                || viewer.ScrollableHeight <= 0
-                || viewer.VerticalOffset + viewer.ViewportHeight >= viewer.ScrollableHeight - 2;
-
-            _lastAutoParsedLog = parsed;
-            Parsed.Text = parsed;
-
-            if (followBottom)
+            _autoParseBusy = true;
+            try
             {
-                if (viewer != null)
-                    viewer.ScrollToEnd();
-                else
-                    Parsed.ScrollToEnd();
+                string parsed = await Task.Run(() => AppController.ParseChatLog(false));
+                if (parsed == _lastAutoParsedLog)
+                    return;
+
+                ScrollViewer viewer = FindVisualChild<ScrollViewer>(Parsed);
+                bool followBottom = viewer == null
+                    || viewer.ScrollableHeight <= 0
+                    || viewer.VerticalOffset + viewer.ViewportHeight >= viewer.ScrollableHeight - 2;
+
+                _lastAutoParsedLog = parsed;
+                Parsed.Text = TruncateForDisplay(parsed);
+
+                if (followBottom)
+                {
+                    if (viewer != null)
+                        viewer.ScrollToEnd();
+                    else
+                        Parsed.ScrollToEnd();
+                }
             }
+            finally
+            {
+                _autoParseBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// Returns the text for on-screen display: if it is larger than
+        /// MaxDisplayLines lines, only the newest lines are returned with a
+        /// note, so the text box never freezes on huge logs. The full text is
+        /// kept separately (see _lastParsedFull) for saving.
+        /// </summary>
+        private static string TruncateForDisplay(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            int newlines = 0;
+            int cutIndex = text.Length;
+            for (int i = text.Length - 1; i >= 0; i--)
+            {
+                if (text[i] == '\n')
+                {
+                    newlines++;
+                    if (newlines >= MaxDisplayLines)
+                    {
+                        cutIndex = i + 1;
+                        break;
+                    }
+                }
+            }
+            if (cutIndex >= text.Length)
+                return text;
+
+            return string.Format(Strings.LogTooLarge, MaxDisplayLines) + "\n" + text.Substring(cutIndex);
         }
 
         /// <summary>
@@ -728,7 +789,9 @@ namespace Assistant.UI
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(Parsed.Text))
+                // Prefer the full log when it was truncated for display only.
+                string content = !string.IsNullOrEmpty(_lastParsedFull) ? _lastParsedFull : Parsed.Text;
+                if (string.IsNullOrWhiteSpace(content))
                 {
                     if (!Properties.Settings.Default.DisableErrorPopups)
                         MessageBox.Show(Strings.NothingParsed, Strings.Error, MessageBoxButton.OK, MessageBoxImage.Error);
@@ -745,7 +808,7 @@ namespace Assistant.UI
                 if (dialog.ShowDialog() != true) return;
                 using (StreamWriter sw = new StreamWriter(dialog.OpenFile()))
                 {
-                    sw.Write(Parsed.Text);
+                    sw.Write(content);
                 }
             }
             catch

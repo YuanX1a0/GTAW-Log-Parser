@@ -43,6 +43,7 @@
   "Language": "Idioma",
   "LanguageInfo": "El idioma elegido se usará para extraer el registro de chat del servidor correcto.\n\nEsto significa que si eliges inglés, solo podrás analizar el registro de chat generado por el servidor de inglés. Deberás cambiar el idioma de la aplicación si deseas analizar otros registros de chat.",
   "LoadedAt": " a las {0}",
+  "LogTooLarge": "Registro demasiado grande; solo se muestran las últimas {0} líneas",
   "MainIP": "164.132.206.209_22008",
   "MinimizeInsteadOfClose": "Cerrar el parser impedirá que se realicen las copias de seguridad automáticas.\n\n¿Deseas minimizar el parser a la bandeja del sistema en su lugar?",
   "MinutePlural": "minutos",

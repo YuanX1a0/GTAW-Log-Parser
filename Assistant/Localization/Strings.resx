@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -261,6 +261,9 @@ This means that if you chose English, you will only be able to parse the chat lo
   </data>
   <data name="LoadedAt" xml:space="preserve">
     <value> at {0}</value>
+  </data>
+  <data name="LogTooLarge" xml:space="preserve">
+    <value>Log too large, showing only the latest {0} lines</value>
   </data>
   <data name="MainIP" xml:space="preserve">
     <value>51.178.79.228_22005</value>

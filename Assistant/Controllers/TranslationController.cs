@@ -373,10 +373,27 @@ namespace Assistant.Controllers
         }
 
         /// <summary>
+        /// Extracts the sequence of numbers (in order) from a string.
+        /// Used to prevent fuzzy cache hits when key information such as
+        /// quantities ("3 crates" vs "4 crates") differs between messages.
+        /// </summary>
+        private static readonly Regex NumberRegex = new Regex(@"\d+", RegexOptions.Compiled);
+
+        private static List<string> ExtractNumbers(string text)
+        {
+            List<string> numbers = new List<string>();
+            foreach (Match m in NumberRegex.Matches(text))
+                numbers.Add(m.Value);
+            return numbers;
+        }
+
+        /// <summary>
         /// Looks up a cached translation allowing minor differences from the
         /// exact key (typos, small wording changes) via bigram Dice similarity.
         /// Only entries with the same provider/language/model prefix and a
-        /// similar text length are considered. Requires EnableFuzzyCacheMatch.
+        /// similar text length are considered. Numbers in the text must match
+        /// exactly so that quantity changes never reuse a stale translation.
+        /// Requires EnableFuzzyCacheMatch.
         /// </summary>
         private static string GetFuzzyCachedTranslation(string cacheKeyPrefix, string normalizedText)
         {
@@ -384,6 +401,7 @@ namespace Assistant.Controllers
                 || normalizedText.Length < 6)
                 return null;
 
+            List<string> textNumbers = ExtractNumbers(normalizedText);
             string bestKey = null;
             double bestScore = 0;
             lock (CacheLock)
@@ -395,6 +413,21 @@ namespace Assistant.Controllers
                         continue;
                     string candidate = key.Substring(cacheKeyPrefix.Length);
                     if (Math.Abs(candidate.Length - normalizedText.Length) > 2)
+                        continue;
+                    // Numbers must match exactly ("3 crates" != "4 crates").
+                    List<string> cachedNumbers = ExtractNumbers(candidate);
+                    if (cachedNumbers.Count != textNumbers.Count)
+                        continue;
+                    bool numbersEqual = true;
+                    for (int i = 0; i < cachedNumbers.Count; i++)
+                    {
+                        if (cachedNumbers[i] != textNumbers[i])
+                        {
+                            numbersEqual = false;
+                            break;
+                        }
+                    }
+                    if (!numbersEqual)
                         continue;
                     double score = DiceCoefficient(candidate, normalizedText);
                     if (score > bestScore)
