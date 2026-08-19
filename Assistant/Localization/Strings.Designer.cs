@@ -1326,6 +1326,12 @@ namespace Assistant.Localization {
             }
         }
 
+        internal static string OverviewCacheFuzzyHits {
+            get {
+                return ResourceManager.GetString("OverviewCacheFuzzyHits", resourceCulture);
+            }
+        }
+
         internal static string EnableTranslationCache {
             get {
                 return ResourceManager.GetString("EnableTranslationCache", resourceCulture);
@@ -1407,6 +1413,24 @@ namespace Assistant.Localization {
         internal static string SendOverlayApply {
             get {
                 return ResourceManager.GetString("SendOverlayApply", resourceCulture);
+            }
+        }
+
+        internal static string SendOverlayTranslate {
+            get {
+                return ResourceManager.GetString("SendOverlayTranslate", resourceCulture);
+            }
+        }
+
+        internal static string EnableManualTranslate {
+            get {
+                return ResourceManager.GetString("EnableManualTranslate", resourceCulture);
+            }
+        }
+
+        internal static string EnableFuzzyCacheMatch {
+            get {
+                return ResourceManager.GetString("EnableFuzzyCacheMatch", resourceCulture);
             }
         }
 
@@ -1611,6 +1635,90 @@ namespace Assistant.Localization {
         internal static string NavRealtimeLog {
             get {
                 return ResourceManager.GetString("NavRealtimeLog", resourceCulture);
+            }
+        }
+
+        internal static string NavApiUsage {
+            get {
+                return ResourceManager.GetString("NavApiUsage", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageTitle {
+            get {
+                return ResourceManager.GetString("ApiUsageTitle", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageRangeLabel {
+            get {
+                return ResourceManager.GetString("ApiUsageRangeLabel", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageRange7 {
+            get {
+                return ResourceManager.GetString("ApiUsageRange7", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageRange30 {
+            get {
+                return ResourceManager.GetString("ApiUsageRange30", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageTotalRequests {
+            get {
+                return ResourceManager.GetString("ApiUsageTotalRequests", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageTotalTokens {
+            get {
+                return ResourceManager.GetString("ApiUsageTotalTokens", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageLegendInput {
+            get {
+                return ResourceManager.GetString("ApiUsageLegendInput", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageLegendOutput {
+            get {
+                return ResourceManager.GetString("ApiUsageLegendOutput", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageNoData {
+            get {
+                return ResourceManager.GetString("ApiUsageNoData", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageTipRequests {
+            get {
+                return ResourceManager.GetString("ApiUsageTipRequests", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageTipInput {
+            get {
+                return ResourceManager.GetString("ApiUsageTipInput", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageTipOutput {
+            get {
+                return ResourceManager.GetString("ApiUsageTipOutput", resourceCulture);
+            }
+        }
+
+        internal static string ApiUsageTipTotal {
+            get {
+                return ResourceManager.GetString("ApiUsageTipTotal", resourceCulture);
             }
         }
 

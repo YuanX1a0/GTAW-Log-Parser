@@ -128,6 +128,9 @@
     <Setting Name="EnableTranslationCache" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
+    <Setting Name="EnableFuzzyCacheMatch" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
     <Setting Name="TranslationPrompt" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
@@ -228,6 +231,9 @@
       <Value Profile="(Default)"></Value>
     </Setting>
     <Setting Name="SettingsPageTranslation" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="EnableManualTranslate" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>

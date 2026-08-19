@@ -63,6 +63,12 @@
                             <TextBlock x:Name="NavTranslationText" Text="翻译" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
+                    <Button x:Name="NavApiUsage" Click="NavApiUsage_Click" HorizontalContentAlignment="Left" Padding="10,9" Margin="0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="ChartLine" Width="16" Height="16" Foreground="{DynamicResource FluentTextForeground}"/>
+                            <TextBlock x:Name="NavApiUsageText" Text="API用量" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <Button x:Name="NavRealtimeLog" Click="NavRealtimeLog_Click" HorizontalContentAlignment="Left" Padding="10,9" Margin="0,2">
                         <StackPanel Orientation="Horizontal">
                             <iconPacks:PackIconMaterial Kind="Pulse" Width="16" Height="16" Foreground="{DynamicResource FluentTextForeground}"/>
@@ -195,6 +201,27 @@
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
+            </Grid>
+
+            <!-- API用量页 -->
+            <Grid x:Name="ApiUsagePage" Visibility="Collapsed">
+                <Border Background="White" CornerRadius="8">
+                    <Grid Margin="18,14,18,14">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="ApiUsageTitle" Text="API 用量" FontSize="24" FontWeight="SemiBold" Foreground="#222222"/>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                            <TextBlock x:Name="ApiUsageRangeLabel" Text="时间范围：" FontSize="13" Foreground="#555555" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="ApiUsageRangeList" Width="140" SelectionChanged="ApiUsageRangeList_SelectionChanged" VerticalAlignment="Center" FontSize="13"/>
+                        </StackPanel>
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,12,0,0">
+                            <StackPanel x:Name="ApiUsageCardsPanel"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
             </Grid>
 
             <!-- 聊天日志页 -->
@@ -391,6 +418,14 @@
                         <Label x:Name="EnableCacheLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <CheckBox x:Name="EnableCacheCheckBox" Grid.Column="1" VerticalAlignment="Center"/>
                     </Grid>
+                    <Grid x:Name="FuzzyCacheRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="FuzzyCacheLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <CheckBox x:Name="FuzzyCacheCheckBox" Grid.Column="1" VerticalAlignment="Center"/>
+                    </Grid>
                     <Grid x:Name="TranslationPromptRow" Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="170"/>
@@ -411,6 +446,7 @@
                     <TextBlock x:Name="SectionSend" Style="{StaticResource FluentSectionHeader}" Text="发送翻译"/>
 
                     <CheckBox x:Name="SendTranslationEnabled" Margin="0,2,0,0" Checked="SendTranslationEnabled_Changed" Unchecked="SendTranslationEnabled_Changed"/>
+                    <CheckBox x:Name="EnableManualTranslateCheckBox" Margin="0,6,0,0"/>
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="170"/>

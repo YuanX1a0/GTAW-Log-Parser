@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Globalization;
 using Assistant.Controllers;
 using Assistant.Localization;
+using Assistant.UI.Controls;
 using System.Windows.Controls;
 using System.Collections.Generic;
 using System.Windows.Media;
@@ -83,23 +84,28 @@ namespace Assistant.UI
             bool chat = page == "chatlog";
             bool realtime = page == "realtimelog";
             bool about = page == "about";
+            bool apiusage = page == "apiusage";
 
             OverviewPage.Visibility = overview ? Visibility.Visible : Visibility.Collapsed;
             ChatLogPage.Visibility = chat ? Visibility.Visible : Visibility.Collapsed;
-            TranslationPage.Visibility = (overview || chat || realtime || about) ? Visibility.Collapsed : Visibility.Visible;
+            TranslationPage.Visibility = (overview || chat || realtime || about || apiusage) ? Visibility.Collapsed : Visibility.Visible;
             RealtimeLogPage.Visibility = realtime ? Visibility.Visible : Visibility.Collapsed;
             AboutPage.Visibility = about ? Visibility.Visible : Visibility.Collapsed;
+            ApiUsagePage.Visibility = apiusage ? Visibility.Visible : Visibility.Collapsed;
 
             SetNavButton(NavOverview, NavOverviewText, overview);
             SetNavButton(NavChatLog, NavChatLogText, chat);
-            SetNavButton(NavTranslation, NavTranslationText, !overview && !chat && !realtime && !about);
+            SetNavButton(NavTranslation, NavTranslationText, !overview && !chat && !realtime && !about && !apiusage);
             SetNavButton(NavRealtimeLog, NavRealtimeLogText, realtime);
             SetNavButton(NavAbout, NavAboutText, about);
+            SetNavButton(NavApiUsage, NavApiUsageText, apiusage);
 
             if (overview)
                 RefreshOverviewStats();
             else if (realtime)
                 RefreshRealtimeLog();
+            else if (apiusage)
+                RefreshApiUsage();
         }
 
         /// <summary>
@@ -153,7 +159,8 @@ namespace Assistant.UI
                     ? string.Format("{0:F1} KB", bytes / 1024.0)
                     : bytes + " B";
             CacheInfo.Text = string.Format(Strings.OverviewCacheInfo, count.ToString("N0"), sizeText)
-                + "  ·  " + string.Format(Strings.OverviewCacheHits, TranslationController.CacheHits.ToString("N0"));
+                + "  ·  " + string.Format(Strings.OverviewCacheHits, TranslationController.CacheHits.ToString("N0"))
+                + "  ·  " + string.Format(Strings.OverviewCacheFuzzyHits, TranslationController.FuzzyCacheHits.ToString("N0"));
 
             CacheList.ItemsSource = TranslationController.GetRecentCacheEntries(200);
         }
@@ -208,6 +215,182 @@ namespace Assistant.UI
         private void NavRealtimeLog_Click(object sender, RoutedEventArgs e)
         {
             ShowPage("realtimelog");
+        }
+
+        private void NavApiUsage_Click(object sender, RoutedEventArgs e)
+        {
+            ShowPage("apiusage");
+        }
+
+        // ================================================================
+        //  API usage page
+        // ================================================================
+
+        private int apiUsageDays = 7;
+
+        private void ApiUsageRangeList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            apiUsageDays = ApiUsageRangeList.SelectedIndex == 1 ? 30 : 7;
+            if (ApiUsagePage.Visibility == Visibility.Visible)
+                RefreshApiUsage();
+        }
+
+        /// <summary>
+        /// Rebuilds the per-model API usage cards on the API usage page.
+        /// </summary>
+        private void RefreshApiUsage()
+        {
+            if (ApiUsageCardsPanel == null)
+                return;
+            ApiUsageCardsPanel.Children.Clear();
+
+            List<ApiUsageTracker.ModelSeries> series = ApiUsageTracker.GetSeries(apiUsageDays);
+            if (series.Count == 0)
+            {
+                ApiUsageCardsPanel.Children.Add(new TextBlock
+                {
+                    Text = Strings.ApiUsageNoData,
+                    FontSize = 14,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 60, 0, 0)
+                });
+                return;
+            }
+
+            foreach (ApiUsageTracker.ModelSeries model in series)
+                ApiUsageCardsPanel.Children.Add(BuildApiUsageCard(model));
+        }
+
+        /// <summary>
+        /// Builds the white card for one model: header (name + cumulative
+        /// totals) followed by the request area chart and the token bar chart.
+        /// </summary>
+        private Border BuildApiUsageCard(ApiUsageTracker.ModelSeries model)
+        {
+            Border card = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(16, 12, 16, 14),
+                Margin = new Thickness(0, 0, 0, 14)
+            };
+
+            StackPanel stack = new StackPanel();
+
+            // ---- Header: requests (left), model name (center), tokens (right)
+            Grid header = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            TextBlock requestsText = new TextBlock
+            {
+                Text = string.Format(Strings.ApiUsageTotalRequests, model.TotalRequests.ToString("N0")),
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            TextBlock nameText = new TextBlock
+            {
+                Text = model.Model,
+                FontSize = 15,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x22)),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 320
+            };
+
+            TextBlock tokensText = new TextBlock
+            {
+                Text = string.Format(Strings.ApiUsageTotalTokens, FormatCompact(model.TotalTokens)),
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+
+            Grid.SetColumn(requestsText, 0);
+            Grid.SetColumn(nameText, 1);
+            Grid.SetColumn(tokensText, 2);
+            header.Children.Add(requestsText);
+            header.Children.Add(nameText);
+            header.Children.Add(tokensText);
+            stack.Children.Add(header);
+
+            // ---- Charts side by side
+            Grid charts = new Grid();
+            charts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            charts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            UsageChart lineChart = new UsageChart
+            {
+                Mode = UsageChartMode.LineArea,
+                Data = model.Days,
+                Height = 210,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+
+            UsageChart barChart = new UsageChart
+            {
+                Mode = UsageChartMode.StackedBar,
+                Data = model.Days,
+                Height = 210,
+                Margin = new Thickness(8, 0, 0, 0)
+            };
+
+            Grid.SetColumn(lineChart, 0);
+            Grid.SetColumn(barChart, 1);
+            charts.Children.Add(lineChart);
+            charts.Children.Add(barChart);
+            stack.Children.Add(charts);
+
+            // ---- Legend for the stacked bar chart (input / output colors)
+            StackPanel legend = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 6, 0, 0)
+            };
+            legend.Children.Add(MakeApiUsageLegendItem(Color.FromRgb(0x5B, 0x9B, 0xD5), Strings.ApiUsageLegendInput));
+            legend.Children.Add(MakeApiUsageLegendItem(Color.FromRgb(0xFF, 0xC0, 0x00), Strings.ApiUsageLegendOutput));
+            stack.Children.Add(legend);
+
+            card.Child = stack;
+            return card;
+        }
+
+        private static StackPanel MakeApiUsageLegendItem(Color color, string text)
+        {
+            StackPanel panel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 16, 0) };
+            panel.Children.Add(new Border
+            {
+                Width = 12,
+                Height = 12,
+                Background = new SolidColorBrush(color),
+                CornerRadius = new CornerRadius(2),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 5, 0)
+            });
+            panel.Children.Add(new TextBlock { Text = text, FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)), VerticalAlignment = VerticalAlignment.Center });
+            return panel;
+        }
+
+        /// <summary>
+        /// Formats a token count compactly: 1.2M, 850K, 1,234.
+        /// </summary>
+        private static string FormatCompact(long value)
+        {
+            if (value >= 1000000)
+                return (value / 1000000.0).ToString("0.#", CultureInfo.InvariantCulture) + "M";
+            if (value >= 1000)
+                return (value / 1000.0).ToString("0.#", CultureInfo.InvariantCulture) + "K";
+            return value.ToString("N0");
         }
 
         private void NavFilter_Click(object sender, RoutedEventArgs e)
@@ -305,6 +488,15 @@ namespace Assistant.UI
             NavOverviewText.Text = Strings.NavOverview;
             NavChatLogText.Text = Strings.NavChatLog;
             NavTranslationText.Text = Strings.NavTranslation;
+            NavApiUsageText.Text = Strings.NavApiUsage;
+            ApiUsageTitle.Text = Strings.ApiUsageTitle;
+            ApiUsageRangeLabel.Text = Strings.ApiUsageRangeLabel;
+            int apiSel = ApiUsageRangeList.SelectedIndex >= 0 ? ApiUsageRangeList.SelectedIndex : 0;
+            ApiUsageRangeList.Items.Clear();
+            ApiUsageRangeList.Items.Add(Strings.ApiUsageRange7);
+            ApiUsageRangeList.Items.Add(Strings.ApiUsageRange30);
+            ApiUsageRangeList.SelectedIndex = apiSel;
+            NavRealtimeLogText.Text = Strings.NavRealtimeLog;
             NavFilterText.Text = Strings.MenuFilterChatLog;
             NavSettingsText.Text = Strings.SettingsTitle;
             NavAboutText.Text = Strings.MenuAbout;
@@ -352,9 +544,11 @@ namespace Assistant.UI
             ZoomApiKeyLabel.Content = Strings.ZoomApiKey;
             TranslationDisplayModeLabel.Content = Strings.TranslationDisplayMode;
             EnableCacheLabel.Content = Strings.EnableTranslationCache;
+            FuzzyCacheLabel.Content = Strings.EnableFuzzyCacheMatch;
             TranslationPromptLabel.Content = Strings.TranslationPrompt;
             TranslationStyleLabel.Content = Strings.TranslationStyle;
             SendTranslationEnabled.Content = Strings.SendTranslationEnabled;
+            EnableManualTranslateCheckBox.Content = Strings.EnableManualTranslate;
             SendSourceLanguageLabel.Content = Strings.SourceLanguage;
             SendTargetLanguageLabel.Content = Strings.TargetLanguage;
             SendTranslationKeyLabel.Content = Strings.SendTranslationHotkey;
@@ -464,7 +658,9 @@ namespace Assistant.UI
 
         /// <summary>
         /// Periodically reads the captured chat log and updates
-        /// the main text box only when the content has changed
+        /// the main text box only when the content has changed.
+        /// Follows new messages (scrolls to bottom) only while the
+        /// user is at the bottom; keeps the position when scrolling up.
         /// </summary>
         private void AutoParseTimer_Tick(object sender, EventArgs e)
         {
@@ -472,8 +668,39 @@ namespace Assistant.UI
             if (parsed == _lastAutoParsedLog)
                 return;
 
+            ScrollViewer viewer = FindVisualChild<ScrollViewer>(Parsed);
+            bool followBottom = viewer == null
+                || viewer.ScrollableHeight <= 0
+                || viewer.VerticalOffset + viewer.ViewportHeight >= viewer.ScrollableHeight - 2;
+
             _lastAutoParsedLog = parsed;
             Parsed.Text = parsed;
+
+            if (followBottom)
+            {
+                if (viewer != null)
+                    viewer.ScrollToEnd();
+                else
+                    Parsed.ScrollToEnd();
+            }
+        }
+
+        /// <summary>
+        /// Finds the first child of the given type in the visual tree
+        /// </summary>
+        private static T FindVisualChild<T>(DependencyObject root) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            {
+                DependencyObject child = VisualTreeHelper.GetChild(root, i);
+                T match = child as T;
+                if (match != null)
+                    return match;
+                match = FindVisualChild<T>(child);
+                if (match != null)
+                    return match;
+            }
+            return null;
         }
 
         /// <summary>
@@ -687,6 +914,8 @@ namespace Assistant.UI
             TranslationDisplayModeList.SelectionChanged += saveSelection;
             EnableCacheCheckBox.Checked += saveRouted;
             EnableCacheCheckBox.Unchecked += saveRouted;
+            FuzzyCacheCheckBox.Checked += saveRouted;
+            FuzzyCacheCheckBox.Unchecked += saveRouted;
             TranslationPromptBox.TextChanged += saveText;
             TranslationStyleList.SelectionChanged += saveSelection;
             TranslationBulkHotkeyBox.TextChanged += saveText;
@@ -700,6 +929,8 @@ namespace Assistant.UI
 
             SendTranslationEnabled.Checked += saveRouted;
             SendTranslationEnabled.Unchecked += saveRouted;
+            EnableManualTranslateCheckBox.Checked += saveRouted;
+            EnableManualTranslateCheckBox.Unchecked += saveRouted;
             SendSourceLanguageList.SelectionChanged += saveSelection;
             SendTargetLanguageList.SelectionChanged += saveSelection;
             SendTranslationKeyBox.TextChanged += saveText;
@@ -983,6 +1214,7 @@ namespace Assistant.UI
             Properties.Settings.Default.CustomModels = string.Join(",", _customChatModels);
             Properties.Settings.Default.TranslationDisplayMode = TranslationDisplayModeList.SelectedIndex == 1 ? "replace" : "append";
             Properties.Settings.Default.EnableTranslationCache = EnableCacheCheckBox.IsChecked == true;
+            Properties.Settings.Default.EnableFuzzyCacheMatch = FuzzyCacheCheckBox.IsChecked == true;
             Properties.Settings.Default.TranslationPrompt = TranslationPromptBox.Text;
             string bulkHotkey = (TranslationBulkHotkeyBox.Text ?? string.Empty).Trim();
             Properties.Settings.Default.TranslationBulkHotkey = string.IsNullOrEmpty(bulkHotkey) ? "Ctrl+F9" : bulkHotkey;
@@ -992,6 +1224,7 @@ namespace Assistant.UI
             Properties.Settings.Default.SettingsPageTranslation = SettingsPageTranslationCheckBox.IsChecked == true;
             Properties.Settings.Default.AutoTranslateHotkey = string.IsNullOrEmpty(autoHotkey) ? "Ctrl+Shift+F9" : autoHotkey;
             Properties.Settings.Default.SendTranslationEnabled = SendTranslationEnabled.IsChecked == true;
+            Properties.Settings.Default.EnableManualTranslate = EnableManualTranslateCheckBox.IsChecked == true;
             string hotkey = (SendTranslationKeyBox.Text ?? string.Empty).Trim();
             Properties.Settings.Default.SendTranslationHotkey = string.IsNullOrEmpty(hotkey) ? "F9" : hotkey;
             Properties.Settings.Default.SendTranslationProvider = ProviderName(SendProviderList.SelectedIndex);
@@ -1041,8 +1274,10 @@ namespace Assistant.UI
             SelectCustomModel(CustomModelList, Properties.Settings.Default.CustomModel);
             TranslationDisplayModeList.SelectedIndex = Properties.Settings.Default.TranslationDisplayMode == "replace" ? 1 : 0;
             EnableCacheCheckBox.IsChecked = Properties.Settings.Default.EnableTranslationCache;
+            FuzzyCacheCheckBox.IsChecked = Properties.Settings.Default.EnableFuzzyCacheMatch;
             TranslationPromptBox.Text = Properties.Settings.Default.TranslationPrompt;
             SendTranslationEnabled.IsChecked = Properties.Settings.Default.SendTranslationEnabled;
+            EnableManualTranslateCheckBox.IsChecked = Properties.Settings.Default.EnableManualTranslate;
             SendTranslationKeyBox.Text = Properties.Settings.Default.SendTranslationHotkey;
             SendProviderList.SelectedIndex = ProviderIndex(Properties.Settings.Default.SendTranslationProvider);
             SendApiKeyBox.Password = Properties.Settings.Default.SendDeepSeekApiKey;
@@ -1679,6 +1914,7 @@ namespace Assistant.UI
             SendTranslationKeyBox.IsEnabled = enabled;
             SendProviderLabel.IsEnabled = enabled;
             SendProviderList.IsEnabled = enabled;
+            EnableManualTranslateCheckBox.IsEnabled = enabled;
 
             if (enabled)
             {

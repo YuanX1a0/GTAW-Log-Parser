@@ -96,6 +96,7 @@ namespace Assistant
             FiveMChatCaptureController.Stop();
             TranslationController.FlushCache();
             TranslationStats.Flush();
+            ApiUsageTracker.Flush();
         }
     }
 }

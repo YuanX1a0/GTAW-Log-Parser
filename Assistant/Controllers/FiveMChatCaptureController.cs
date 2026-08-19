@@ -897,7 +897,7 @@ namespace Assistant.Controllers
                 string toastOnJson = serializer.Serialize((toastPrefix ?? string.Empty) + (toastOn ?? string.Empty));
                 string toastOffJson = serializer.Serialize((toastPrefix ?? string.Empty) + (toastOff ?? string.Empty));
                 string toastFlag = showToasts ? "true" : "false";
-                string hook = "(function(){ if(window.__gtawSendVersion === 7){ window.__gtawSendHotkey = " + keyJson + "; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastSendOn = " + toastOnJson + "; window.__gtawToastSendOff = " + toastOffJson + "; return; } window.__gtawSendVersion = 7; "
+                string hook = "(function(){ if(window.__gtawSendVersion === 15){ window.__gtawSendHotkey = " + keyJson + "; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastSendOn = " + toastOnJson + "; window.__gtawToastSendOff = " + toastOffJson + "; return; } window.__gtawSendVersion = 15; "
                     + "window.__gtawSendActive = false; window.__gtawSendVisible = false; window.__gtawSendResult = null; window.__gtawSendHotkey = " + keyJson + "; window.__gtawSendDiag = null; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastSendOn = " + toastOnJson + "; window.__gtawToastSendOff = " + toastOffJson + "; "
                     + "if(window.__gtawSendKeyHandler){ document.removeEventListener('keydown', window.__gtawSendKeyHandler, true); } "
                     + "if(window.__gtawSendPlaceTimer){ clearInterval(window.__gtawSendPlaceTimer); } "
@@ -921,7 +921,8 @@ namespace Assistant.Controllers
                     + "function placeBtn(){ if(btn.parentNode) return; var input = getInput(); if(input && input.parentNode){ input.parentNode.appendChild(btn); } else if(document.body){ btn.style.position = 'fixed'; btn.style.right = '8px'; btn.style.bottom = '8px'; btn.style.zIndex = '9999'; document.body.appendChild(btn); } } "
                     + "placeBtn(); window.__gtawSendPlaceTimer = setInterval(placeBtn, 2000); "
                     + "window.__gtawSendVisTimer = setInterval(syncTranslator, 250); "
-                    + "window.__gtawSendFastTimer = setInterval(function(){ if(window.__gtawSendActive && !document.getElementById('gtaw-send-overlay')){ var el = getInput(); if(!el) return; var st = window.getComputedStyle(el); if(st.display === 'none' || st.visibility === 'hidden') return; var op = parseFloat(st.opacity); if(!isNaN(op) && op <= 0.02) return; var r = el.getBoundingClientRect(); if(!(r.width > 0 && r.height > 0)) return; var inChat = !!(el.closest && el.closest('.chat__input, .chat-input, [class*=\"chat\" i], [id*=\"chat\" i]')); if(!inChat && r.bottom < window.innerHeight * 0.30) return; syncTranslator(); } }, 100); })();";
+                    + "window.__gtawSendFastTimer = setInterval(function(){ if(window.__gtawSendActive && !document.getElementById('gtaw-send-overlay')){ var el = getInput(); if(!el) return; var st = window.getComputedStyle(el); if(st.display === 'none' || st.visibility === 'hidden') return; var op = parseFloat(st.opacity); if(!isNaN(op) && op <= 0.02) return; var r = el.getBoundingClientRect(); if(!(r.width > 0 && r.height > 0)) return; var inChat = !!(el.closest && el.closest('.chat__input, .chat-input, [class*=\"chat\" i], [id*=\"chat\" i]')); if(!inChat && r.bottom < window.innerHeight * 0.30) return; syncTranslator(); } }, 100); "
+                    + "})();";
                 Request("Runtime.evaluate", new Dictionary<string, object>
                 {
                     { "expression", hook },
@@ -942,7 +943,7 @@ namespace Assistant.Controllers
                     + "if(window.__gtawSendBtn && window.__gtawSendBtn.parentNode){ window.__gtawSendBtn.parentNode.removeChild(window.__gtawSendBtn); } "
                     + "if(window.__gtawSendDragMove){ document.removeEventListener('mousemove', window.__gtawSendDragMove); } if(window.__gtawSendDragUp){ document.removeEventListener('mouseup', window.__gtawSendDragUp); } if(window.__gtawSendResizeMove){ document.removeEventListener('mousemove', window.__gtawSendResizeMove); } if(window.__gtawSendResizeUp){ document.removeEventListener('mouseup', window.__gtawSendResizeUp); } "
                     + "var ov = document.getElementById('gtaw-send-overlay'); if(ov && ov.parentNode){ ov.parentNode.removeChild(ov); } var tt = document.getElementById('gtaw-toast'); if(tt && tt.parentNode){ tt.parentNode.removeChild(tt); } "
-                    + "delete window.__gtawSendKeyHandler; delete window.__gtawSendBtn; delete window.__gtawSendBtnHandler; delete window.__gtawSendResult; delete window.__gtawSendToggle; delete window.__gtawSendSync; delete window.__gtawSendActive; delete window.__gtawSendVisible; delete window.__gtawSendHotkey; delete window.__gtawSendVersion; delete window.__gtawSendPlaceTimer; delete window.__gtawSendVisTimer; delete window.__gtawSendFastTimer; delete window.__gtawSendPos; delete window.__gtawSendLastOpen; delete window.__gtawSendStable; delete window.__gtawShowToasts; delete window.__gtawToast; delete window.__gtawSendResizeMove; delete window.__gtawSendResizeUp;";
+                    + "delete window.__gtawSendKeyHandler; delete window.__gtawSendBtn; delete window.__gtawSendBtnHandler; delete window.__gtawSendResult; delete window.__gtawSendToggle; delete window.__gtawSendSync; delete window.__gtawSendActive; delete window.__gtawSendVisible; delete window.__gtawSendHotkey; delete window.__gtawSendVersion; delete window.__gtawSendPlaceTimer; delete window.__gtawSendVisTimer; delete window.__gtawSendFastTimer; delete window.__gtawSendPos; delete window.__gtawSendLastOpen; delete window.__gtawSendStable; delete window.__gtawShowToasts; delete window.__gtawToast; delete window.__gtawSendResizeMove; delete window.__gtawSendResizeUp; delete window.__gtawSendDiag;";
                 Request("Runtime.evaluate", new Dictionary<string, object>
                 {
                     { "expression", uninstallExpression },
@@ -958,7 +959,7 @@ namespace Assistant.Controllers
             /// The window is never destroyed here - hiding is controlled by the
             /// in-game hook when the chat box opens/closes or the hotkey toggles.
             /// </summary>
-            public void EnsureSendOverlay(string original, string translated, string title, string sendLabel, string applyLabel, string closeLabel, int initLeft, int initTop)
+            public void EnsureSendOverlay(string original, string translated, string title, string sendLabel, string applyLabel, string closeLabel, int initLeft, int initTop, bool manualMode = false, string translateLabel = null)
             {
                 EnsureConnected();
                 string originalJson = serializer.Serialize(original ?? string.Empty);
@@ -967,8 +968,12 @@ namespace Assistant.Controllers
                 string sendJson = serializer.Serialize(sendLabel);
                 string applyJson = serializer.Serialize(applyLabel);
                 string closeJson = serializer.Serialize(closeLabel);
+                string translateJson = serializer.Serialize(string.IsNullOrWhiteSpace(translateLabel) ? "Translate" : translateLabel);
                 string initLeftJs = initLeft >= 0 ? initLeft.ToString(CultureInfo.InvariantCulture) : "-1";
                 string initTopJs = initTop >= 0 ? initTop.ToString(CultureInfo.InvariantCulture) : "-1";
+                string manualJs = manualMode
+                    ? "var translate = document.createElement('button'); translate.type = 'button'; translate.textContent = " + translateJson + "; translate.style.cssText = 'background:#b26a00;color:#fff;border:1px solid #d98a1f;border-radius:4px;padding:4px 14px;margin-left:8px;cursor:pointer;'; translate.onclick = function(){ window.__gtawSendResult = { action: 'translate', text: ta.value }; }; "
+                    : "var translate = null; ";
                 string expression = "(function(){ var old = document.getElementById('gtaw-send-overlay'); if(old){ old.style.display = ''; return; } "
                     + "if(window.__gtawSendDragMove){ document.removeEventListener('mousemove', window.__gtawSendDragMove); } if(window.__gtawSendDragUp){ document.removeEventListener('mouseup', window.__gtawSendDragUp); } if(window.__gtawSendResizeMove){ document.removeEventListener('mousemove', window.__gtawSendResizeMove); } if(window.__gtawSendResizeUp){ document.removeEventListener('mouseup', window.__gtawSendResizeUp); } "
                     + "function getInput(){ var ae = document.activeElement; if(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return ae; var el = document.querySelector('.chat__input input') || document.querySelector('.chat-input input') || document.querySelector('.chat__input textarea') || document.querySelector('.chat-input textarea'); if(el) return el; var inputs = document.querySelectorAll('input, textarea'); for(var i = 0; i < inputs.length; i++){ var tag = inputs[i].tagName; var t = (inputs[i].type || 'text').toLowerCase(); if(tag === 'TEXTAREA' || (t !== 'checkbox' && t !== 'radio' && t !== 'button' && t !== 'submit' && t !== 'hidden')) return inputs[i]; } var ce = document.querySelector('[contenteditable=\"true\"]') || document.querySelector('[contenteditable=\"\"]'); if(ce) return ce; return null; } "
@@ -980,13 +985,14 @@ namespace Assistant.Controllers
                     + "var orig = document.createElement('div'); orig.id = 'gtaw-send-orig'; orig.textContent = " + originalJson + "; orig.style.cssText = 'background:rgba(255,255,255,0.08);padding:6px;border-radius:4px;margin-bottom:8px;white-space:pre-wrap;max-height:70px;overflow:auto;font-size:12px;opacity:0.85;flex:0 0 auto;'; "
                     + "var ta = document.createElement('textarea'); ta.id = 'gtaw-send-ta'; ta.value = " + translatedJson + "; ta.style.cssText = 'width:100%;height:90px;min-height:60px;flex:1 1 auto;background:rgba(255,255,255,0.1);color:#eee;border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:6px;box-sizing:border-box;resize:none;font-family:inherit;'; "
                     + "var row = document.createElement('div'); row.style.cssText = 'margin-top:8px;text-align:right;flex:0 0 auto;'; "
+                    + manualJs
                     + "var apply = document.createElement('button'); apply.type = 'button'; apply.textContent = " + applyJson + "; apply.style.cssText = 'background:#2d6cdf;color:#fff;border:1px solid #4a86e8;border-radius:4px;padding:4px 14px;margin-left:8px;cursor:pointer;'; "
                     + "var send = document.createElement('button'); send.type = 'button'; send.textContent = " + sendJson + "; send.style.cssText = 'background:#1a8a4a;color:#fff;border:1px solid #2aa85e;border-radius:4px;padding:4px 14px;margin-left:8px;cursor:pointer;'; "
                     + "var close = document.createElement('button'); close.type = 'button'; close.textContent = " + closeJson + "; close.style.cssText = 'background:#444;color:#eee;border:1px solid #777;border-radius:4px;padding:4px 14px;margin-left:8px;cursor:pointer;'; "
                     + "apply.onclick = function(){ window.__gtawSendResult = { action: 'apply', text: ta.value }; }; "
                     + "send.onclick = function(){ window.__gtawSendResult = { action: 'send', text: ta.value }; }; "
                     + "close.onclick = function(){ window.__gtawSendActive = false; if(window.__gtawSendSync){ window.__gtawSendSync(); } window.__gtawSendResult = { action: 'close' }; }; "
-                    + "row.appendChild(apply); row.appendChild(send); row.appendChild(close); ov.appendChild(title); ov.appendChild(orig); ov.appendChild(ta); ov.appendChild(row); document.body.appendChild(ov); "
+                    + "if(translate){ row.appendChild(translate); } row.appendChild(apply); row.appendChild(send); row.appendChild(close); ov.appendChild(title); ov.appendChild(orig); ov.appendChild(ta); ov.appendChild(row); document.body.appendChild(ov); "
                     + "var dragging = false, startX = 0, startY = 0, origLeft = 0, origTop = 0; "
                     + "title.addEventListener('mousedown', function(ev){ dragging = true; startX = ev.clientX; startY = ev.clientY; origLeft = ov.offsetLeft; origTop = ov.offsetTop; ev.preventDefault(); }); "
                     + "window.__gtawSendDragMove = function(ev){ if(!dragging) return; var dx = ev.clientX - startX; var dy = ev.clientY - startY; ov.style.left = Math.max(4, Math.min(window.innerWidth - ov.offsetWidth - 4, origLeft + dx)) + 'px'; ov.style.top = Math.max(4, Math.min(window.innerHeight - 30, origTop + dy)) + 'px'; }; "

@@ -523,6 +523,18 @@ namespace Assistant.Properties {
                 this["EnableTranslationCache"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableFuzzyCacheMatch {
+            get {
+                return ((bool)(this["EnableFuzzyCacheMatch"]));
+            }
+            set {
+                this["EnableFuzzyCacheMatch"] = value;
+            }
+        }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
@@ -929,6 +941,18 @@ namespace Assistant.Properties {
             }
             set {
                 this["SettingsPageTranslation"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool EnableManualTranslate {
+            get {
+                return ((bool)(this["EnableManualTranslate"]));
+            }
+            set {
+                this["EnableManualTranslate"] = value;
             }
         }
     }

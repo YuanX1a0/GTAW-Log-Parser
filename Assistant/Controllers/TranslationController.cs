@@ -122,6 +122,7 @@ namespace Assistant.Controllers
         private static readonly Timer CacheFlushTimer;
 
         private static int _cacheHits;
+        private static int _fuzzyCacheHits;
 
         /// <summary>
         /// Number of cache hits since the process started.
@@ -132,6 +133,19 @@ namespace Assistant.Controllers
             {
                 lock (CacheLock)
                     return _cacheHits;
+            }
+        }
+
+        /// <summary>
+        /// Number of fuzzy (approximate) cache hits since the process started.
+        /// Fuzzy hits are also included in <see cref="CacheHits"/>.
+        /// </summary>
+        public static int FuzzyCacheHits
+        {
+            get
+            {
+                lock (CacheLock)
+                    return _fuzzyCacheHits;
             }
         }
 
@@ -283,6 +297,127 @@ namespace Assistant.Controllers
             }
         }
 
+        /// <summary>
+        /// Normalizes translation text for cache keying so that cosmetic
+        /// differences (extra whitespace, case, trailing punctuation,
+        /// full-width characters) reuse the same cached translation.
+        /// CJK text is only trimmed and whitespace-collapsed.
+        /// </summary>
+        public static string NormalizeCacheKey(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
+            // Collapse runs of whitespace into single spaces and trim.
+            StringBuilder sb = new StringBuilder(text.Length);
+            bool hasCjk = false;
+            bool pendingSpace = false;
+            foreach (char c in text)
+            {
+                if (char.IsWhiteSpace(c))
+                {
+                    if (sb.Length > 0)
+                        pendingSpace = true;
+                    continue;
+                }
+                if (pendingSpace)
+                {
+                    sb.Append(' ');
+                    pendingSpace = false;
+                }
+                if (c >= 0x4E00 && c <= 0x9FFF)
+                    hasCjk = true;
+                sb.Append(c);
+            }
+            if (sb.Length == 0)
+                return string.Empty;
+
+            if (hasCjk)
+                return sb.ToString();
+
+            // Non-CJK text: lowercase and convert full-width to half-width.
+            StringBuilder norm = new StringBuilder(sb.Length);
+            for (int i = 0; i < sb.Length; i++)
+            {
+                char c = sb[i];
+                if (c >= 0xFF01 && c <= 0xFF5E)
+                    c = (char)(c - 0xFEE0);
+                norm.Append(char.ToLowerInvariant(c));
+            }
+
+            // Strip trailing sentence punctuation so "on my way." / "on my way!"
+            // map to the same key.
+            return norm.ToString().TrimEnd('.', '!', '?', '。', '！', '？');
+        }
+
+        /// <summary>
+        /// Dice coefficient over character bigrams (0..1), used for fuzzy
+        /// cache matching. No string allocations; pairs are hashed as ints.
+        /// </summary>
+        private static double DiceCoefficient(string a, string b)
+        {
+            int na = a.Length - 1;
+            int nb = b.Length - 1;
+            if (na < 1 || nb < 1)
+                return string.Equals(a, b, StringComparison.Ordinal) ? 1.0 : 0.0;
+            HashSet<int> bigrams = new HashSet<int>();
+            for (int i = 0; i < na; i++)
+                bigrams.Add((a[i] << 16) | a[i + 1]);
+            int intersection = 0;
+            for (int i = 0; i < nb; i++)
+            {
+                if (bigrams.Contains((b[i] << 16) | b[i + 1]))
+                    intersection++;
+            }
+            return (2.0 * intersection) / (na + nb);
+        }
+
+        /// <summary>
+        /// Looks up a cached translation allowing minor differences from the
+        /// exact key (typos, small wording changes) via bigram Dice similarity.
+        /// Only entries with the same provider/language/model prefix and a
+        /// similar text length are considered. Requires EnableFuzzyCacheMatch.
+        /// </summary>
+        private static string GetFuzzyCachedTranslation(string cacheKeyPrefix, string normalizedText)
+        {
+            if (!Assistant.Properties.Settings.Default.EnableFuzzyCacheMatch
+                || normalizedText.Length < 6)
+                return null;
+
+            string bestKey = null;
+            double bestScore = 0;
+            lock (CacheLock)
+            {
+                foreach (KeyValuePair<string, string> pair in TranslationCache)
+                {
+                    string key = pair.Key;
+                    if (!key.StartsWith(cacheKeyPrefix, StringComparison.Ordinal))
+                        continue;
+                    string candidate = key.Substring(cacheKeyPrefix.Length);
+                    if (Math.Abs(candidate.Length - normalizedText.Length) > 2)
+                        continue;
+                    double score = DiceCoefficient(candidate, normalizedText);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestKey = key;
+                        if (score >= 0.98)
+                            break;
+                    }
+                }
+            }
+            if (bestKey == null || bestScore < 0.9)
+                return null;
+
+            lock (CacheLock)
+            {
+                string value;
+                if (TranslationCache.TryGetValue(bestKey, out value))
+                    return value;
+            }
+            return null;
+        }
+
         private static void CacheTranslation(string key, string value)
         {
             if (string.IsNullOrEmpty(value))
@@ -415,7 +550,7 @@ namespace Assistant.Controllers
         {
             new AiProviderPreset("Cline Usage-Billing"),
             new AiProviderPreset("ClinePass"),
-            new AiProviderPreset("OpenAI ChatGPT Subscription"),
+            new AiProviderPreset("OpenAI ChatGPT Subscription", "https://api.openai.com/v1"),
             new AiProviderPreset("DeepSeek", "https://api.deepseek.com/v1"),
             new AiProviderPreset("Anthropic", "https://api.anthropic.com", "anthropic"),
             new AiProviderPreset("OpenRouter", "https://openrouter.ai/api/v1"),
@@ -634,8 +769,9 @@ namespace Assistant.Controllers
 
             TranslationStats.RecordTranslation(text);
 
+            string normalizedText = NormalizeCacheKey(text);
             string cacheKey = "p:" + (provider ?? string.Empty) + "|e:" + (endpoint ?? string.Empty) + "|s:" + (sourceLanguage ?? string.Empty) + "|t:" + (targetLanguage ?? string.Empty)
-                + "|m:" + (model ?? string.Empty) + "|y:" + (style ?? string.Empty) + "|r:" + (reasoningSpeed ?? string.Empty) + "|q:" + (prompt ?? string.Empty) + "|" + text;
+                + "|m:" + (model ?? string.Empty) + "|y:" + (style ?? string.Empty) + "|r:" + (reasoningSpeed ?? string.Empty) + "|q:" + (prompt ?? string.Empty) + "|" + normalizedText;
             if (Assistant.Properties.Settings.Default.EnableTranslationCache)
             {
                 string cached = GetCachedTranslation(cacheKey);
@@ -644,6 +780,18 @@ namespace Assistant.Controllers
                     lock (CacheLock)
                         ++_cacheHits;
                     return cached;
+                }
+                string prefix = cacheKey.Substring(0, cacheKey.Length - normalizedText.Length);
+                string fuzzy = GetFuzzyCachedTranslation(prefix, normalizedText);
+                if (fuzzy != null)
+                {
+                    lock (CacheLock)
+                    {
+                        ++_cacheHits;
+                        ++_fuzzyCacheHits;
+                    }
+                    LogEvent("翻译", "缓存模糊命中: " + Short(text));
+                    return fuzzy;
                 }
             }
 
@@ -678,7 +826,8 @@ namespace Assistant.Controllers
             if (string.IsNullOrWhiteSpace(text))
                 return string.Empty;
 
-            string cacheKey = "g|s:" + (sourceLanguage ?? string.Empty) + "|t:" + (targetLanguage ?? string.Empty) + "|" + text;
+            string normalizedText = NormalizeCacheKey(text);
+            string cacheKey = "g|s:" + (sourceLanguage ?? string.Empty) + "|t:" + (targetLanguage ?? string.Empty) + "|" + normalizedText;
             if (Assistant.Properties.Settings.Default.EnableTranslationCache)
             {
                 string cached = GetCachedTranslation(cacheKey);
@@ -687,6 +836,18 @@ namespace Assistant.Controllers
                     lock (CacheLock)
                         ++_cacheHits;
                     return cached;
+                }
+                string prefix = cacheKey.Substring(0, cacheKey.Length - normalizedText.Length);
+                string fuzzy = GetFuzzyCachedTranslation(prefix, normalizedText);
+                if (fuzzy != null)
+                {
+                    lock (CacheLock)
+                    {
+                        ++_cacheHits;
+                        ++_fuzzyCacheHits;
+                    }
+                    LogEvent("翻译", "缓存模糊命中: " + Short(text));
+                    return fuzzy;
                 }
             }
 
@@ -792,7 +953,10 @@ namespace Assistant.Controllers
                 responseJson = reader.ReadToEnd();
 
             string translated = ParseDeepSeekResponse(responseJson);
-            TranslationStats.RecordApiCall(ParseUsageTokens(responseJson));
+            int usageIn, usageOut;
+            int usageTotal = ParseUsageTokens(responseJson, out usageIn, out usageOut);
+            TranslationStats.RecordApiCall(usageTotal);
+            ApiUsageTracker.RecordUsage(model, usageIn, usageOut);
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
         }
 
@@ -837,6 +1001,7 @@ namespace Assistant.Controllers
                 return text;
 
             TranslationStats.RecordApiCallEstimated(text);
+            ApiUsageTracker.RecordUsageEstimated("DeepL", text);
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
         }
 
@@ -973,6 +1138,7 @@ namespace Assistant.Controllers
             }
             catch { /* keep empty on parse failure */ }
             TranslationStats.RecordApiCall(0);
+            ApiUsageTracker.RecordUsageEstimated(model, text);
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
         }
 
@@ -998,8 +1164,20 @@ namespace Assistant.Controllers
             else if (string.Equals(provider, "Custom", StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(endpoint))
+                {
+                    LogEvent("翻译", "模型列表（" + provider + "）：未填写 API 端点，无法获取账号模型列表，请在端点框选择预设或手动填写");
                     return null;
+                }
                 string baseUrl = endpoint.TrimEnd('/');
+                if (baseUrl.IndexOf("api.openai.com", StringComparison.OrdinalIgnoreCase) >= 0
+                    && !string.IsNullOrWhiteSpace(apiKey)
+                    && !apiKey.StartsWith("sk-proj-", StringComparison.OrdinalIgnoreCase))
+                {
+                    // OpenAI official endpoint only accepts official keys
+                    // (sk-proj-...). Third-party relay keys (sk-z..., etc.)
+                    // must be used with the relay's own base URL instead.
+                    LogEvent("翻译", "模型列表（" + provider + "）：端点是 OpenAI 官方（api.openai.com），但 Key 不是 sk-proj- 开头的官方 Key，若为第三方中转 Key 请将端点框改为中转站的 API 地址");
+                }
                 if (baseUrl.IndexOf("coding.dashscope.aliyuncs.com", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     // Alibaba Coding Plan has no /models endpoint (all paths
@@ -1125,6 +1303,7 @@ namespace Assistant.Controllers
 
             string translated = ParseZoomResponse(responseJson, target);
             TranslationStats.RecordApiCallEstimated(text);
+            ApiUsageTracker.RecordUsageEstimated("Zoom", text);
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
         }
 
@@ -1262,7 +1441,10 @@ namespace Assistant.Controllers
             }
 
             string translated = ParseDeepSeekResponse(responseJson);
-            TranslationStats.RecordApiCall(ParseUsageTokens(responseJson));
+            int customIn, customOut;
+            int customTotal = ParseUsageTokens(responseJson, out customIn, out customOut);
+            TranslationStats.RecordApiCall(customTotal);
+            ApiUsageTracker.RecordUsage(model, customIn, customOut);
             return NormalizePunctuation(RestoreTokens(translated, protectedTokens));
         }
 
@@ -1570,6 +1752,20 @@ namespace Assistant.Controllers
         /// </summary>
         private static int ParseUsageTokens(string json)
         {
+            int input;
+            int output;
+            return ParseUsageTokens(json, out input, out output);
+        }
+
+        /// <summary>
+        /// Extracts token usage from an OpenAI-compatible response.
+        /// Returns the total token count and fills the input / output counters
+        /// (used for per-model daily usage charts). Missing fields default to 0.
+        /// </summary>
+        private static int ParseUsageTokens(string json, out int inputTokens, out int outputTokens)
+        {
+            inputTokens = 0;
+            outputTokens = 0;
             try
             {
                 JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
@@ -1577,11 +1773,26 @@ namespace Assistant.Controllers
                 if (root != null && root.ContainsKey("usage"))
                 {
                     IDictionary<string, object> usage = root["usage"] as IDictionary<string, object>;
-                    if (usage != null && usage.ContainsKey("total_tokens"))
+                    if (usage != null)
                     {
-                        object value = usage["total_tokens"];
-                        if (value != null)
-                            return Convert.ToInt32(value);
+                        if (usage.ContainsKey("prompt_tokens"))
+                        {
+                            object prompt = usage["prompt_tokens"];
+                            if (prompt != null)
+                                inputTokens = Convert.ToInt32(prompt);
+                        }
+                        if (usage.ContainsKey("completion_tokens"))
+                        {
+                            object completion = usage["completion_tokens"];
+                            if (completion != null)
+                                outputTokens = Convert.ToInt32(completion);
+                        }
+                        if (usage.ContainsKey("total_tokens"))
+                        {
+                            object value = usage["total_tokens"];
+                            if (value != null)
+                                return Convert.ToInt32(value);
+                        }
                     }
                 }
             }
@@ -1590,7 +1801,7 @@ namespace Assistant.Controllers
                 // usage is optional; fall through to 0
             }
 
-            return 0;
+            return inputTokens + outputTokens;
         }
 
         /// <summary>

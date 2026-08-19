@@ -144,6 +144,7 @@ namespace Assistant.Controllers
             bool active = state != null && state.ContainsKey("active") && Convert.ToBoolean(state["active"]);
             bool visible = state != null && state.ContainsKey("visible") && Convert.ToBoolean(state["visible"]);
             bool created = state != null && state.ContainsKey("created") && Convert.ToBoolean(state["created"]);
+            bool manualMode = Properties.Settings.Default.EnableManualTranslate;
 
             // Persist the window position after the player drags it in-game.
             SaveWindowPosition(state);
@@ -186,6 +187,28 @@ namespace Assistant.Controllers
                     lastTranslatedInput = null;
                     return; // The close button already deactivated the window
                 }
+                else if (action == "translate")
+                {
+                    // Manual translate button: translate the current chat input
+                    // in the background and show the result when it completes.
+                    TranslationController.LogEvent("翻译器", "开始手动翻译");
+                    string current = Reader.GetChatInputText();
+                    if (string.IsNullOrWhiteSpace(current))
+                        current = lastInputText;
+                    if (string.IsNullOrWhiteSpace(current))
+                        return;
+                    lastRetranslate = DateTime.UtcNow;
+                    translatingInput = current;
+                    string request = current;
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        string translatedResult = TranslateBody(request);
+                        lock (SyncRoot)
+                        {
+                            completedTranslation = translatedResult;
+                        }
+                    });
+                }
             }
 
             string inputText = Reader.GetChatInputText();
@@ -204,8 +227,9 @@ namespace Assistant.Controllers
             if (!created)
             {
                 // First time the window is shown: translate the current input
-                // and build the window with the result.
-                string translated = TranslateBody(inputText);
+                // and build the window with the result (manual mode waits for
+                // the translate button instead).
+                string translated = manualMode ? string.Empty : TranslateBody(inputText);
                 Reader.EnsureSendOverlay(
                     inputText,
                     translated,
@@ -214,10 +238,12 @@ namespace Assistant.Controllers
                     Strings.SendOverlayApply,
                     Strings.SendOverlayCancel,
                     Settings.Default.TranslatorWindowLeft,
-                    Settings.Default.TranslatorWindowTop);
+                    Settings.Default.TranslatorWindowTop,
+                    manualMode,
+                    Strings.SendOverlayTranslate);
                 lastInputText = inputText;
                 lastTranslated = translated;
-                lastTranslatedInput = inputText;
+                lastTranslatedInput = manualMode ? null : inputText;
                 lastRetranslate = DateTime.UtcNow;
                 return;
             }
@@ -245,10 +271,12 @@ namespace Assistant.Controllers
             }
 
             // Re-translate in the background whenever the current input has no
-            // matching translation yet. Throttled to one request per 700 ms and
-            // at most one request in flight, so typing never floods the
-            // provider but a stale result is retranslated immediately.
-            if (translatingInput == null
+            // matching translation yet (skipped in manual mode, where the
+            // translate button is the only trigger). Throttled to one request
+            // per 700 ms and at most one request in flight, so typing never
+            // floods the provider but a stale result is retranslated immediately.
+            if (!manualMode
+                && translatingInput == null
                 && (DateTime.UtcNow - lastRetranslate).TotalMilliseconds > 700
                 && !string.Equals(lastTranslatedInput, inputText, StringComparison.Ordinal))
             {
