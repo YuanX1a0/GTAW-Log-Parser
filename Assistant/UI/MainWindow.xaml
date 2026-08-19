@@ -41,7 +41,7 @@
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="16,10,16,16">
-                    <TextBlock x:Name="Version" FontSize="12" Foreground="{DynamicResource FluentSecondaryForeground}" TextAlignment="Center" Text="v6.0.0"/>
+                    <TextBlock x:Name="Version" FontSize="12" Foreground="{DynamicResource FluentSecondaryForeground}" TextAlignment="Center" Text="v6.1.0"/>
                 </StackPanel>
 
                 <StackPanel Margin="10,6,10,10">
