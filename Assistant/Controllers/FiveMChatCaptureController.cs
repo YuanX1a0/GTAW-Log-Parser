@@ -405,7 +405,7 @@ namespace Assistant.Controllers
                         Properties.Settings.Default.TranslationProvider,
                         apiKey,
                         model,
-                        Properties.Settings.Default.TranslationPrompt,
+                        AppController.GetActiveTranslationPrompt(),
                         Properties.Settings.Default.TranslationStyle,
                         null,
                         Properties.Settings.Default.CustomEndpoint);
@@ -446,7 +446,7 @@ namespace Assistant.Controllers
                                 Properties.Settings.Default.TranslationProvider,
                                 apiKey,
                                 model,
-                                Properties.Settings.Default.TranslationPrompt,
+                                AppController.GetActiveTranslationPrompt(),
                                 Properties.Settings.Default.TranslationStyle,
                                 null,
                                 Properties.Settings.Default.CustomEndpoint);

@@ -802,6 +802,19 @@ namespace Assistant.Controllers
 
             TranslationStats.RecordTranslation(text);
 
+            // Protect special nouns (place names etc.) before anything else so
+            // that they are restored as the target-language translation from
+            // the special-nouns dictionaries afterwards.
+            List<string> snPlaceholders = null;
+            List<string> snReplacements = null;
+            string workText = text;
+            if (SpecialNounsController.HasNouns)
+            {
+                snPlaceholders = new List<string>();
+                snReplacements = new List<string>();
+                workText = SpecialNounsController.Protect(text, targetLanguage, snPlaceholders, snReplacements);
+            }
+
             string normalizedText = NormalizeCacheKey(text);
             string cacheKey = "p:" + (provider ?? string.Empty) + "|e:" + (endpoint ?? string.Empty) + "|s:" + (sourceLanguage ?? string.Empty) + "|t:" + (targetLanguage ?? string.Empty)
                 + "|m:" + (model ?? string.Empty) + "|y:" + (style ?? string.Empty) + "|r:" + (reasoningSpeed ?? string.Empty) + "|q:" + (prompt ?? string.Empty) + "|" + normalizedText;
@@ -830,18 +843,22 @@ namespace Assistant.Controllers
 
             string result;
             if (string.Equals(provider, "DeepSeek", StringComparison.OrdinalIgnoreCase))
-                result = TranslateWithDeepSeek(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style,
+                result = TranslateWithDeepSeek(workText, targetLanguage, sourceLanguage, apiKey, model, prompt, style,
                     reasoningSpeed ?? Assistant.Properties.Settings.Default.DeepSeekReasoningSpeed);
             else if (string.Equals(provider, "DeepL", StringComparison.OrdinalIgnoreCase))
-                result = TranslateWithDeepL(text, targetLanguage, sourceLanguage, apiKey);
+                result = TranslateWithDeepL(workText, targetLanguage, sourceLanguage, apiKey);
             else if (string.Equals(provider, "Doubao", StringComparison.OrdinalIgnoreCase))
-                result = TranslateWithDoubao(text, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
+                result = TranslateWithDoubao(workText, targetLanguage, sourceLanguage, apiKey, model, prompt, style);
             else if (string.Equals(provider, "Custom", StringComparison.OrdinalIgnoreCase))
-                result = TranslateWithCustom(text, targetLanguage, sourceLanguage, apiKey, endpoint, model, prompt, style);
+                result = TranslateWithCustom(workText, targetLanguage, sourceLanguage, apiKey, endpoint, model, prompt, style);
             else if (string.Equals(provider, "Zoom", StringComparison.OrdinalIgnoreCase))
-                result = TranslateWithZoom(text, targetLanguage, sourceLanguage, apiKey);
+                result = TranslateWithZoom(workText, targetLanguage, sourceLanguage, apiKey);
             else
-                result = Translate(text, targetLanguage, sourceLanguage);
+                result = Translate(workText, targetLanguage, sourceLanguage);
+
+            // Put the protected special nouns back as their translations.
+            if (snPlaceholders != null && snPlaceholders.Count > 0)
+                result = SpecialNounsController.Restore(result, snPlaceholders, snReplacements);
 
             LogEvent("翻译", (string.IsNullOrEmpty(provider) ? "Google" : provider) + " | " + Short(text) + " => " + Short(result));
             if (Assistant.Properties.Settings.Default.EnableTranslationCache)

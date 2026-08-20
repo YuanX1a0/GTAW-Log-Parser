@@ -63,6 +63,7 @@ namespace Assistant
             // on subsequent starts
             LocalizationController.InitializeLocale();
             AppController.InitializeServerIp();
+            SpecialNounsController.EnsureDefaults();
 
             if (!Settings.Default.HasPickedLanguage)
             {

@@ -31,10 +31,23 @@ namespace Assistant.UI
         // Holds the full parsed log so the on-screen text box can be truncated
         // for display while "Save" still writes the complete contents.
         private string _lastParsedFull = string.Empty;
-        // Maximum lines shown in the parsed text box; beyond this the newest
-        // lines are shown and the rest are kept only in _lastParsedFull.
-        private const int MaxDisplayLines = 15000;
+        // Maximum lines shown in the parsed text box at once; beyond this the
+        // newest lines are shown and the rest can be loaded with LoadMore.
+        private const int MaxDisplayLines = 500;
+        private int _displayedLines = MaxDisplayLines;
+
+        // Special-nouns editor state: pending in-memory edits of the current
+        // dictionary file, the entry being edited (-1 = adding new) and the
+        // dirty flag that drives the "save changes / discard changes" buttons.
+        private List<SpecialNounEntry> _pendingNounEntries;
+        private int _nounEditIndex = -1;
+        private bool _nounDirty;
         private bool _autoParseBusy;
+
+        // Currently active prompt preset (1-5) for translation and send
+        // translation. The visible prompt text box edits the active slot.
+        private int _translationPresetIndex = 1;
+        private int _sendPresetIndex = 1;
 
         // Debounced model-list refresh: when an API key is typed, the model
         // combo boxes are repopulated from the actual account (DeepSeek /
@@ -528,6 +541,7 @@ namespace Assistant.UI
             SectionGameTranslation.Text = Strings.SectionGameTranslation;
 
             Parse.Content = Strings.Parse;
+            LoadMoreButton.Content = Strings.LogLoadMore;
             SaveParsed.Content = Strings.SaveAs;
             CopyParsedToClipboard.Content = Strings.CopyToClipboard;
 
@@ -574,6 +588,31 @@ namespace Assistant.UI
             SendCustomModelLabel.Content = Strings.SendCustomModel;
             SendZoomApiKeyLabel.Content = Strings.SendZoomApiKey;
             SendPromptLabel.Content = Strings.TranslationPrompt;
+            TranslationPreset1.ToolTip = string.Format(Strings.TranslationPreset, 1);
+            TranslationPreset2.ToolTip = string.Format(Strings.TranslationPreset, 2);
+            TranslationPreset3.ToolTip = string.Format(Strings.TranslationPreset, 3);
+            TranslationPreset4.ToolTip = string.Format(Strings.TranslationPreset, 4);
+            TranslationPreset5.ToolTip = string.Format(Strings.TranslationPreset, 5);
+            SendPreset1.ToolTip = string.Format(Strings.TranslationPreset, 1);
+            SendPreset2.ToolTip = string.Format(Strings.TranslationPreset, 2);
+            SendPreset3.ToolTip = string.Format(Strings.TranslationPreset, 3);
+            SendPreset4.ToolTip = string.Format(Strings.TranslationPreset, 4);
+            SendPreset5.ToolTip = string.Format(Strings.TranslationPreset, 5);
+            TranslationSettingsTab.Header = Strings.TranslationSettingsTab;
+            SpecialNounsTab.Header = Strings.SpecialNounsTab;
+            SpecialNounsImportButtonText.Text = Strings.SpecialNounsImport;
+            SpecialNounsOpenFolderButtonText.Text = Strings.SpecialNounsOpenFolder;
+            SpecialNounsExampleButtonText.Text = Strings.SpecialNounsExample;
+            SpecialNounsFilesLabel.Text = Strings.SpecialNounsFiles;
+            SpecialNounsEntriesLabel.Text = Strings.SpecialNounsEntries;
+            SpecialNounsAddButtonText.Text = Strings.SpecialNounsAdd;
+            SpecialNounsDeleteButtonText.Text = Strings.SpecialNounsDelete;
+            SpecialNounsSaveButton.Content = Strings.SpecialNounsSave;
+            SpecialNounsCancelButton.Content = Strings.SpecialNounsCancel;
+            SpecialNounsImportedLabel.Text = Strings.SpecialNounsImported;
+            SpecialNounsEnBox.ToolTip = Strings.SpecialNounsEn;
+            SpecialNounsZhCnBox.ToolTip = Strings.SpecialNounsZhCn;
+            SpecialNounsZhTwBox.ToolTip = Strings.SpecialNounsZhTw;
         }
 
         /// <summary>
@@ -639,7 +678,8 @@ namespace Assistant.UI
                 string full = await Task.Run(() => AppController.ParseChatLog(false, true));
                 _lastParsedFull = full;
                 _lastAutoParsedLog = full;
-                Parsed.Text = TruncateForDisplay(full);
+                _displayedLines = MaxDisplayLines;
+                Parsed.Text = BuildDisplayText(full);
             }
             finally
             {
@@ -699,7 +739,7 @@ namespace Assistant.UI
                     || viewer.VerticalOffset + viewer.ViewportHeight >= viewer.ScrollableHeight - 2;
 
                 _lastAutoParsedLog = parsed;
-                Parsed.Text = TruncateForDisplay(parsed);
+                Parsed.Text = BuildDisplayText(parsed);
 
                 if (followBottom)
                 {
@@ -716,34 +756,35 @@ namespace Assistant.UI
         }
 
         /// <summary>
-        /// Returns the text for on-screen display: if it is larger than
-        /// MaxDisplayLines lines, only the newest lines are returned with a
-        /// note, so the text box never freezes on huge logs. The full text is
-        /// kept separately (see _lastParsedFull) for saving.
+        /// Returns the text for on-screen display: if it is larger than the
+        /// current display window (MaxDisplayLines, extendable via "load
+        /// earlier messages"), only the newest lines are returned with a note,
+        /// so the text box never freezes on huge logs. The full text is kept
+        /// separately (see _lastParsedFull) for saving.
         /// </summary>
-        private static string TruncateForDisplay(string text)
+        private string BuildDisplayText(string fullText)
         {
-            if (string.IsNullOrEmpty(text))
-                return text;
+            if (string.IsNullOrEmpty(fullText))
+                return fullText;
 
-            int newlines = 0;
-            int cutIndex = text.Length;
-            for (int i = text.Length - 1; i >= 0; i--)
+            string[] lines = fullText.Split('\n');
+            int total = lines.Length;
+            int show = Math.Min(_displayedLines, total);
+            if (show >= total)
             {
-                if (text[i] == '\n')
-                {
-                    newlines++;
-                    if (newlines >= MaxDisplayLines)
-                    {
-                        cutIndex = i + 1;
-                        break;
-                    }
-                }
+                LoadMoreButton.Visibility = Visibility.Collapsed;
+                return fullText;
             }
-            if (cutIndex >= text.Length)
-                return text;
+            LoadMoreButton.Visibility = Visibility.Visible;
+            string visible = string.Join("\n", lines, total - show, show);
+            return string.Format(Strings.LogTooLarge, show) + "\n" + visible;
+        }
 
-            return string.Format(Strings.LogTooLarge, MaxDisplayLines) + "\n" + text.Substring(cutIndex);
+        private void LoadMore_Click(object sender, RoutedEventArgs e)
+        {
+            _displayedLines += MaxDisplayLines;
+            if (!string.IsNullOrEmpty(_lastParsedFull))
+                Parsed.Text = BuildDisplayText(_lastParsedFull);
         }
 
         /// <summary>
@@ -1278,6 +1319,9 @@ namespace Assistant.UI
             Properties.Settings.Default.TranslationDisplayMode = TranslationDisplayModeList.SelectedIndex == 1 ? "replace" : "append";
             Properties.Settings.Default.EnableTranslationCache = EnableCacheCheckBox.IsChecked == true;
             Properties.Settings.Default.EnableFuzzyCacheMatch = FuzzyCacheCheckBox.IsChecked == true;
+            SetTranslationPromptSlot(_translationPresetIndex, TranslationPromptBox.Text);
+            Properties.Settings.Default.TranslationPromptPresetIndex = _translationPresetIndex;
+            // Keep the legacy single-value setting in sync as a fallback.
             Properties.Settings.Default.TranslationPrompt = TranslationPromptBox.Text;
             string bulkHotkey = (TranslationBulkHotkeyBox.Text ?? string.Empty).Trim();
             Properties.Settings.Default.TranslationBulkHotkey = string.IsNullOrEmpty(bulkHotkey) ? "Ctrl+F9" : bulkHotkey;
@@ -1307,6 +1351,9 @@ namespace Assistant.UI
             Properties.Settings.Default.SendCustomApiKey = SanitizeKey(SendCustomApiKeyBox.Password);
             Properties.Settings.Default.SendCustomModel = (SendCustomModelList.Text ?? string.Empty).Trim();
             Properties.Settings.Default.SendCustomModels = string.Join(",", _customSendModels);
+            SetSendPromptSlot(_sendPresetIndex, SendPromptBox.Text);
+            Properties.Settings.Default.SendTranslationPromptPresetIndex = _sendPresetIndex;
+            // Keep the legacy single-value setting in sync as a fallback.
             Properties.Settings.Default.SendTranslationPrompt = SendPromptBox.Text;
             Properties.Settings.Default.TranslationStyle = TranslationStyleList.SelectedIndex == 1 ? "formal" : TranslationStyleList.SelectedIndex == 2 ? "literary" : "casual";
 
@@ -1338,7 +1385,9 @@ namespace Assistant.UI
             TranslationDisplayModeList.SelectedIndex = Properties.Settings.Default.TranslationDisplayMode == "replace" ? 1 : 0;
             EnableCacheCheckBox.IsChecked = Properties.Settings.Default.EnableTranslationCache;
             FuzzyCacheCheckBox.IsChecked = Properties.Settings.Default.EnableFuzzyCacheMatch;
-            TranslationPromptBox.Text = Properties.Settings.Default.TranslationPrompt;
+            _translationPresetIndex = ClampPreset(Properties.Settings.Default.TranslationPromptPresetIndex);
+            CheckTranslationPreset(_translationPresetIndex);
+            TranslationPromptBox.Text = GetTranslationPromptSlot(_translationPresetIndex);
             SendTranslationEnabled.IsChecked = Properties.Settings.Default.SendTranslationEnabled;
             EnableManualTranslateCheckBox.IsChecked = Properties.Settings.Default.EnableManualTranslate;
             SendTranslationKeyBox.Text = Properties.Settings.Default.SendTranslationHotkey;
@@ -1353,7 +1402,9 @@ namespace Assistant.UI
             SelectCustomProvider(SendCustomProviderList, SendCustomEndpointBox, Properties.Settings.Default.SendCustomProviderName, Properties.Settings.Default.SendCustomEndpoint);
             SendCustomApiKeyBox.Password = Properties.Settings.Default.SendCustomApiKey;
             SelectCustomModel(SendCustomModelList, Properties.Settings.Default.SendCustomModel);
-            SendPromptBox.Text = Properties.Settings.Default.SendTranslationPrompt;
+            _sendPresetIndex = ClampPreset(Properties.Settings.Default.SendTranslationPromptPresetIndex);
+            CheckSendPreset(_sendPresetIndex);
+            SendPromptBox.Text = GetSendPromptSlot(_sendPresetIndex);
             TranslationStyleList.SelectedIndex = "formal".Equals(Properties.Settings.Default.TranslationStyle) ? 1 : "literary".Equals(Properties.Settings.Default.TranslationStyle) ? 2 : 0;
             TranslationBulkHotkeyBox.Text = Properties.Settings.Default.TranslationBulkHotkey;
             AutoTranslateCheckBox.IsChecked = Properties.Settings.Default.AutoTranslate;
@@ -1373,6 +1424,374 @@ namespace Assistant.UI
             ScheduleModelRefresh("SendDeepSeek");
             ScheduleModelRefresh("SendDoubao");
             ScheduleModelRefresh("SendCustom");
+            RefreshSpecialNouns();
+        }
+
+        // ----- Prompt presets (1-5) for translation and send translation -----
+
+        private static int ClampPreset(int index)
+        {
+            return index < 1 ? 1 : (index > 5 ? 5 : index);
+        }
+
+        private static string GetTranslationPromptSlot(int index)
+        {
+            switch (index)
+            {
+                case 2: return Properties.Settings.Default.TranslationPrompt2 ?? string.Empty;
+                case 3: return Properties.Settings.Default.TranslationPrompt3 ?? string.Empty;
+                case 4: return Properties.Settings.Default.TranslationPrompt4 ?? string.Empty;
+                case 5: return Properties.Settings.Default.TranslationPrompt5 ?? string.Empty;
+                default: return Properties.Settings.Default.TranslationPrompt1 ?? string.Empty;
+            }
+        }
+
+        private static void SetTranslationPromptSlot(int index, string value)
+        {
+            switch (index)
+            {
+                case 2: Properties.Settings.Default.TranslationPrompt2 = value; break;
+                case 3: Properties.Settings.Default.TranslationPrompt3 = value; break;
+                case 4: Properties.Settings.Default.TranslationPrompt4 = value; break;
+                case 5: Properties.Settings.Default.TranslationPrompt5 = value; break;
+                default: Properties.Settings.Default.TranslationPrompt1 = value; break;
+            }
+        }
+
+        private static string GetSendPromptSlot(int index)
+        {
+            switch (index)
+            {
+                case 2: return Properties.Settings.Default.SendTranslationPrompt2 ?? string.Empty;
+                case 3: return Properties.Settings.Default.SendTranslationPrompt3 ?? string.Empty;
+                case 4: return Properties.Settings.Default.SendTranslationPrompt4 ?? string.Empty;
+                case 5: return Properties.Settings.Default.SendTranslationPrompt5 ?? string.Empty;
+                default: return Properties.Settings.Default.SendTranslationPrompt1 ?? string.Empty;
+            }
+        }
+
+        private static void SetSendPromptSlot(int index, string value)
+        {
+            switch (index)
+            {
+                case 2: Properties.Settings.Default.SendTranslationPrompt2 = value; break;
+                case 3: Properties.Settings.Default.SendTranslationPrompt3 = value; break;
+                case 4: Properties.Settings.Default.SendTranslationPrompt4 = value; break;
+                case 5: Properties.Settings.Default.SendTranslationPrompt5 = value; break;
+                default: Properties.Settings.Default.SendTranslationPrompt1 = value; break;
+            }
+        }
+
+        private void CheckTranslationPreset(int index)
+        {
+            switch (index)
+            {
+                case 2: TranslationPreset2.IsChecked = true; break;
+                case 3: TranslationPreset3.IsChecked = true; break;
+                case 4: TranslationPreset4.IsChecked = true; break;
+                case 5: TranslationPreset5.IsChecked = true; break;
+                default: TranslationPreset1.IsChecked = true; break;
+            }
+        }
+
+        private void CheckSendPreset(int index)
+        {
+            switch (index)
+            {
+                case 2: SendPreset2.IsChecked = true; break;
+                case 3: SendPreset3.IsChecked = true; break;
+                case 4: SendPreset4.IsChecked = true; break;
+                case 5: SendPreset5.IsChecked = true; break;
+                default: SendPreset1.IsChecked = true; break;
+            }
+        }
+
+        /// <summary>
+        /// Switches the visible prompt box to the selected preset, saving the
+        /// currently edited text into its own slot first.
+        /// </summary>
+        private void TranslationPreset_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loadingTranslationSettings || !(sender is RadioButton rb))
+                return;
+            int index = rb.Tag is string tag ? ClampPreset(int.Parse(tag)) : 1;
+            if (index == _translationPresetIndex)
+                return;
+            SetTranslationPromptSlot(_translationPresetIndex, TranslationPromptBox.Text);
+            _translationPresetIndex = index;
+            TranslationPromptBox.Text = GetTranslationPromptSlot(index);
+            SaveTranslationSettings();
+        }
+
+        private void SendPreset_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loadingTranslationSettings || !(sender is RadioButton rb))
+                return;
+            int index = rb.Tag is string tag ? ClampPreset(int.Parse(tag)) : 1;
+            if (index == _sendPresetIndex)
+                return;
+            SetSendPromptSlot(_sendPresetIndex, SendPromptBox.Text);
+            _sendPresetIndex = index;
+            SendPromptBox.Text = GetSendPromptSlot(index);
+            SaveTranslationSettings();
+        }
+
+        // ================================================================
+        //  Special nouns page
+        // ================================================================
+
+        private void RefreshSpecialNouns()
+        {
+            List<string> files = SpecialNounsController.ListFiles();
+            SpecialNounsFilesList.ItemsSource = files;
+            if (files.Count > 0)
+            {
+                string current = SpecialNounsFilesList.SelectedItem as string;
+                if (current == null)
+                {
+                    SpecialNounsFilesList.SelectedIndex = 0;
+                    current = SpecialNounsFilesList.SelectedItem as string;
+                }
+                if (current != null)
+                    RefreshSpecialNounsEntries(current);
+            }
+            else
+            {
+                SpecialNounsEntriesList.ItemsSource = null;
+                _pendingNounEntries = null;
+            }
+        }
+
+        private string CurrentSpecialNounsFile()
+        {
+            return SpecialNounsFilesList.SelectedItem as string;
+        }
+
+        private void RefreshSpecialNounsEntries(string fileName)
+        {
+            _pendingNounEntries = SpecialNounsController.GetEntries(fileName);
+            SpecialNounsEntriesList.ItemsSource = _pendingNounEntries;
+            _nounEditIndex = -1;
+            SetNounAddButtonMode(false);
+        }
+
+        private void SetNounAddButtonMode(bool editing)
+        {
+            SpecialNounsAddButtonText.Text = editing ? Strings.SpecialNounsUpdate : Strings.SpecialNounsAdd;
+        }
+
+        private void UpdateNounDirtyUI()
+        {
+            Visibility v = _nounDirty ? Visibility.Visible : Visibility.Collapsed;
+            SpecialNounsSaveButton.Visibility = v;
+            SpecialNounsCancelButton.Visibility = v;
+        }
+
+        private void SpecialNounsEntry_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (SpecialNounsEntriesList.SelectedItem is SpecialNounEntry entry && _pendingNounEntries != null)
+            {
+                _nounEditIndex = _pendingNounEntries.IndexOf(entry);
+                SpecialNounsEnBox.Text = entry.en ?? string.Empty;
+                SpecialNounsZhCnBox.Text = entry.zhCN ?? string.Empty;
+                SpecialNounsZhTwBox.Text = entry.zhTW ?? string.Empty;
+                SetNounAddButtonMode(true);
+            }
+        }
+
+        private void SpecialNounsFile_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_nounDirty && e.RemovedItems.Count > 0 && e.AddedItems.Count > 0)
+            {
+                string previous = e.RemovedItems[0] as string;
+                MessageBoxResult result = MessageBox.Show(Strings.SpecialNounsDirtyPrompt, Strings.Question,
+                    MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                if (result == MessageBoxResult.Yes)
+                    SpecialNounsController.SaveFileEntries(previous, _pendingNounEntries);
+                else if (result == MessageBoxResult.Cancel)
+                {
+                    // Stay on the current file, restoring the selection.
+                    SpecialNounsFilesList.SelectionChanged -= SpecialNounsFile_SelectionChanged;
+                    SpecialNounsFilesList.SelectedItem = previous;
+                    SpecialNounsFilesList.SelectionChanged += SpecialNounsFile_SelectionChanged;
+                    return;
+                }
+                _nounDirty = false;
+            }
+            string file = CurrentSpecialNounsFile();
+            if (file != null)
+                RefreshSpecialNounsEntries(file);
+            else
+            {
+                SpecialNounsEntriesList.ItemsSource = null;
+                _pendingNounEntries = null;
+            }
+            _nounDirty = false;
+            UpdateNounDirtyUI();
+        }
+
+        private void SpecialNounsAdd_Click(object sender, RoutedEventArgs e)
+        {
+            string file = CurrentSpecialNounsFile();
+            string en = SpecialNounsEnBox.Text.Trim();
+            if (string.IsNullOrEmpty(file) || string.IsNullOrEmpty(en))
+            {
+                MessageBox.Show(Strings.SpecialNounsAddError, Strings.Error, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (_pendingNounEntries == null)
+                _pendingNounEntries = SpecialNounsController.GetEntries(file);
+            string zhCN = SpecialNounsZhCnBox.Text.Trim();
+            string zhTW = SpecialNounsZhTwBox.Text.Trim();
+            if (_nounEditIndex >= 0 && _nounEditIndex < _pendingNounEntries.Count)
+            {
+                SpecialNounEntry target = _pendingNounEntries[_nounEditIndex];
+                bool duplicate = _pendingNounEntries.Any(x =>
+                    !ReferenceEquals(x, target) &&
+                    string.Equals(x.en, en, StringComparison.OrdinalIgnoreCase));
+                if (duplicate)
+                {
+                    MessageBox.Show(Strings.SpecialNounsAddError, Strings.Error, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                target.en = en;
+                target.zhCN = zhCN;
+                target.zhTW = zhTW;
+            }
+            else
+            {
+                SpecialNounEntry existing = _pendingNounEntries.FirstOrDefault(x =>
+                    string.Equals(x.en, en, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
+                {
+                    existing.zhCN = zhCN;
+                    existing.zhTW = zhTW;
+                }
+                else
+                {
+                    _pendingNounEntries.Add(new SpecialNounEntry { en = en, zhCN = zhCN, zhTW = zhTW });
+                }
+            }
+            _nounEditIndex = -1;
+            SetNounAddButtonMode(false);
+            _nounDirty = true;
+            UpdateNounDirtyUI();
+            SpecialNounsEnBox.Clear();
+            SpecialNounsZhCnBox.Clear();
+            SpecialNounsZhTwBox.Clear();
+            SpecialNounsEntriesList.ItemsSource = null;
+            SpecialNounsEntriesList.ItemsSource = _pendingNounEntries;
+        }
+
+        private void SpecialNounsDelete_Click(object sender, RoutedEventArgs e)
+        {
+            string file = CurrentSpecialNounsFile();
+            if (file == null || !(SpecialNounsEntriesList.SelectedItem is SpecialNounEntry entry))
+                return;
+            if (_pendingNounEntries == null)
+                _pendingNounEntries = SpecialNounsController.GetEntries(file);
+            _pendingNounEntries.RemoveAll(x => string.Equals(x.en, entry.en, StringComparison.OrdinalIgnoreCase));
+            _nounEditIndex = -1;
+            SetNounAddButtonMode(false);
+            _nounDirty = true;
+            UpdateNounDirtyUI();
+            SpecialNounsEnBox.Clear();
+            SpecialNounsZhCnBox.Clear();
+            SpecialNounsZhTwBox.Clear();
+            SpecialNounsEntriesList.ItemsSource = null;
+            SpecialNounsEntriesList.ItemsSource = _pendingNounEntries;
+        }
+
+        private void SpecialNounsSave_Click(object sender, RoutedEventArgs e)
+        {
+            string file = CurrentSpecialNounsFile();
+            if (file == null)
+                return;
+            SpecialNounsController.SaveFileEntries(file, _pendingNounEntries);
+            _nounDirty = false;
+            UpdateNounDirtyUI();
+        }
+
+        private void SpecialNounsCancel_Click(object sender, RoutedEventArgs e)
+        {
+            string file = CurrentSpecialNounsFile();
+            _nounDirty = false;
+            UpdateNounDirtyUI();
+            SpecialNounsEnBox.Clear();
+            SpecialNounsZhCnBox.Clear();
+            SpecialNounsZhTwBox.Clear();
+            if (file != null)
+                RefreshSpecialNounsEntries(file);
+        }
+
+        private void SpecialNounsImport_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.OpenFileDialog dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "JSON (*.json)|*.json|All files (*.*)|*.*",
+                Title = Strings.SpecialNounsImport
+            };
+            if (dialog.ShowDialog() != true)
+                return;
+
+            List<string> terms;
+            try
+            {
+                terms = SpecialNounsController.ReadTermsFromFile(dialog.FileName);
+            }
+            catch
+            {
+                MessageBox.Show(Strings.SpecialNounsImportError, Strings.Error, MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            if (terms.Count == 0)
+            {
+                MessageBox.Show(Strings.SpecialNounsNoTerms, Strings.Error, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            SpecialNounsImportedPanel.Children.Clear();
+            foreach (string term in terms)
+            {
+                Button tag = new Button
+                {
+                    Content = term,
+                    Tag = term,
+                    Margin = new Thickness(0, 0, 6, 6),
+                    Padding = new Thickness(10, 2, 10, 2)
+                };
+                tag.Click += SpecialNounsTag_Click;
+                SpecialNounsImportedPanel.Children.Add(tag);
+            }
+            SpecialNounsImportedLabel.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>
+        /// A clicked imported term fills the "English" box and focuses the
+        /// Chinese input so the matching translation can be typed and added.
+        /// </summary>
+        private void SpecialNounsTag_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button tag && tag.Tag is string term)
+            {
+                _nounEditIndex = -1;
+                SetNounAddButtonMode(false);
+                SpecialNounsEnBox.Text = term;
+                SpecialNounsEnBox.CaretIndex = term.Length;
+                SpecialNounsZhCnBox.Focus();
+            }
+        }
+
+        private void SpecialNounsOpenFolder_Click(object sender, RoutedEventArgs e)
+        {
+            SpecialNounsController.OpenFolder();
+        }
+
+        private void SpecialNounsExample_Click(object sender, RoutedEventArgs e)
+        {
+            SpecialNounsController.EnsureReferenceExample();
+            SpecialNounsController.LoadAll();
+            RefreshSpecialNouns();
         }
 
         /// <summary>

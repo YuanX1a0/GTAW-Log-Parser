@@ -243,6 +243,7 @@
                 <Grid Grid.Row="2" Margin="0,12,0,0">
                     <StackPanel Orientation="Horizontal">
                         <Button x:Name="Parse" Style="{StaticResource FluentAccentButton}" Click="Parse_Click"/>
+                        <Button x:Name="LoadMoreButton" Click="LoadMore_Click" Margin="8,0,0,0" Visibility="Collapsed"/>
                         <Button x:Name="SaveParsed" Click="SaveParsed_Click" Margin="8,0,0,0"/>
                         <Button x:Name="CopyParsedToClipboard" Click="CopyParsedToClipboard_Click" Margin="8,0,0,0"/>
                     </StackPanel>
@@ -256,7 +257,9 @@
 
             <!-- 翻译页 -->
             <ScrollViewer x:Name="TranslationPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="0,0,24,20">
+                <TabControl x:Name="TranslationTabs" Margin="0,0,24,20">
+                    <TabItem x:Name="TranslationSettingsTab">
+                        <StackPanel Margin="0,12,0,20">
                     <TextBlock x:Name="TranslationTitle" Text="翻译" FontSize="24" FontWeight="SemiBold"/>
 
                     <TextBlock x:Name="SectionGeneral" Style="{StaticResource FluentSectionHeader}" Text="常规"/>
@@ -432,7 +435,16 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Label x:Name="TranslationPromptLabel" Grid.Column="0" VerticalAlignment="Top" Margin="0,4,0,0"/>
-                        <TextBox x:Name="TranslationPromptBox" Grid.Column="1" Height="60" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalAlignment="Top"/>
+                        <StackPanel Grid.Column="1">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <RadioButton x:Name="TranslationPreset1" GroupName="TranslationPromptPresets" Tag="1" Content="1" Checked="TranslationPreset_Checked" Margin="0,0,6,0"/>
+                                <RadioButton x:Name="TranslationPreset2" GroupName="TranslationPromptPresets" Tag="2" Content="2" Checked="TranslationPreset_Checked" Margin="0,0,6,0"/>
+                                <RadioButton x:Name="TranslationPreset3" GroupName="TranslationPromptPresets" Tag="3" Content="3" Checked="TranslationPreset_Checked" Margin="0,0,6,0"/>
+                                <RadioButton x:Name="TranslationPreset4" GroupName="TranslationPromptPresets" Tag="4" Content="4" Checked="TranslationPreset_Checked" Margin="0,0,6,0"/>
+                                <RadioButton x:Name="TranslationPreset5" GroupName="TranslationPromptPresets" Tag="5" Content="5" Checked="TranslationPreset_Checked"/>
+                            </StackPanel>
+                            <TextBox x:Name="TranslationPromptBox" Height="60" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalAlignment="Top"/>
+                        </StackPanel>
                     </Grid>
                     <Grid x:Name="TranslationStyleRow" Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
@@ -576,9 +588,116 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Label x:Name="SendPromptLabel" Grid.Column="0" VerticalAlignment="Top" Margin="0,4,0,0"/>
-                        <TextBox x:Name="SendPromptBox" Grid.Column="1" Height="60" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalAlignment="Top"/>
+                        <StackPanel Grid.Column="1">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <RadioButton x:Name="SendPreset1" GroupName="SendPromptPresets" Tag="1" Content="1" Checked="SendPreset_Checked" Margin="0,0,6,0"/>
+                                <RadioButton x:Name="SendPreset2" GroupName="SendPromptPresets" Tag="2" Content="2" Checked="SendPreset_Checked" Margin="0,0,6,0"/>
+                                <RadioButton x:Name="SendPreset3" GroupName="SendPromptPresets" Tag="3" Content="3" Checked="SendPreset_Checked" Margin="0,0,6,0"/>
+                                <RadioButton x:Name="SendPreset4" GroupName="SendPromptPresets" Tag="4" Content="4" Checked="SendPreset_Checked" Margin="0,0,6,0"/>
+                                <RadioButton x:Name="SendPreset5" GroupName="SendPromptPresets" Tag="5" Content="5" Checked="SendPreset_Checked"/>
+                            </StackPanel>
+                            <TextBox x:Name="SendPromptBox" Height="60" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalAlignment="Top"/>
+                        </StackPanel>
                     </Grid>
-                </StackPanel>
+                        </StackPanel>
+                    </TabItem>
+                    <TabItem x:Name="SpecialNounsTab">
+                        <StackPanel Margin="0,4,0,12">
+                            <TextBlock x:Name="SpecialNounsTitle" Text="特殊名词" FontSize="20" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                <Button x:Name="SpecialNounsImportButton" Style="{StaticResource FluentAccentButton}" Click="SpecialNounsImport_Click" Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <iconPacks:PackIconMaterial Kind="Import" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="SpecialNounsImportButtonText" Text="导入 JSON"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="SpecialNounsOpenFolderButton" Click="SpecialNounsOpenFolder_Click" Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <iconPacks:PackIconMaterial Kind="FolderOpen" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="SpecialNounsOpenFolderButtonText" Text="打开文件夹"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="SpecialNounsExampleButton" Click="SpecialNounsExample_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <iconPacks:PackIconMaterial Kind="FilePlus" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="SpecialNounsExampleButtonText" Text="创建参考示例"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <Grid Margin="0,14,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1*"/>
+                                    <ColumnDefinition Width="2*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Margin="0,0,12,0" Background="{DynamicResource FluentCardBackground}"
+                                        BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                    <DockPanel>
+                                        <TextBlock x:Name="SpecialNounsFilesLabel" DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                        <ListBox x:Name="SpecialNounsFilesList" ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                                                 SelectionChanged="SpecialNounsFile_SelectionChanged" Height="240"/>
+                                    </DockPanel>
+                                </Border>
+                                <Border Grid.Column="1" Background="{DynamicResource FluentCardBackground}"
+                                        BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                    <DockPanel>
+                                        <TextBlock x:Name="SpecialNounsEntriesLabel" DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                        <ListBox x:Name="SpecialNounsEntriesList" ScrollViewer.VerticalScrollBarVisibility="Hidden" Height="240"
+                                                 SelectionChanged="SpecialNounsEntry_SelectionChanged">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding en}" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                                                        <TextBlock Text="{Binding zhCN}" Foreground="{DynamicResource FluentSecondaryForeground}" Margin="0,0,10,0"/>
+                                                        <TextBlock Text="{Binding zhTW}" Foreground="{DynamicResource FluentSecondaryForeground}"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </DockPanel>
+                                </Border>
+                            </Grid>
+                            <Border Margin="0,12,0,0" Background="{DynamicResource FluentCardBackground}"
+                                    BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1*"/>
+                                        <ColumnDefinition Width="1*"/>
+                                        <ColumnDefinition Width="1*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="SpecialNounsEnBox" Grid.Column="0" Margin="0,0,6,0" Height="36" Tag="英文名称（如 Grove St）"
+                                             Foreground="{DynamicResource FluentTextForeground}" Background="{DynamicResource FluentCardBackground}"
+                                             VerticalContentAlignment="Center"/>
+                                    <TextBox x:Name="SpecialNounsZhCnBox" Grid.Column="1" Margin="0,0,6,0" Height="36" Tag="简体中文翻译"
+                                             Foreground="{DynamicResource FluentTextForeground}" Background="{DynamicResource FluentCardBackground}"
+                                             VerticalContentAlignment="Center"/>
+                                    <TextBox x:Name="SpecialNounsZhTwBox" Grid.Column="2" Margin="0,0,6,0" Height="36" Tag="繁体中文翻译"
+                                             Foreground="{DynamicResource FluentTextForeground}" Background="{DynamicResource FluentCardBackground}"
+                                             VerticalContentAlignment="Center"/>
+                                    <Button x:Name="SpecialNounsAddButton" Grid.Column="3" Style="{StaticResource FluentAccentButton}" Click="SpecialNounsAdd_Click" Margin="0,0,8,0" Height="36">
+                                        <StackPanel Orientation="Horizontal">
+                                            <iconPacks:PackIconMaterial Kind="Plus" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="SpecialNounsAddButtonText" Text="添加"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button x:Name="SpecialNounsDeleteButton" Grid.Column="4" Click="SpecialNounsDelete_Click" Height="36">
+                                        <StackPanel Orientation="Horizontal">
+                                            <iconPacks:PackIconMaterial Kind="DeleteOutline" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="SpecialNounsDeleteButtonText" Text="删除选中"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button x:Name="SpecialNounsSaveButton" Grid.Column="5" Style="{StaticResource FluentAccentButton}" Click="SpecialNounsSave_Click" Height="36" Margin="0,0,8,0" Visibility="Collapsed"/>
+                                    <Button x:Name="SpecialNounsCancelButton" Grid.Column="6" Click="SpecialNounsCancel_Click" Height="36" Visibility="Collapsed"/>
+                                </Grid>
+                            </Border>
+                            <TextBlock x:Name="SpecialNounsImportedLabel" Margin="0,14,0,6" Visibility="Collapsed"/>
+                            <WrapPanel x:Name="SpecialNounsImportedPanel" Margin="0,0,0,8"/>
+                        </StackPanel>
+                    </TabItem>
+                </TabControl>
             </ScrollViewer>
 
             <!-- 实时日志页 -->

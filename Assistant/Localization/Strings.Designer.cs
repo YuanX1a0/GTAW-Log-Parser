@@ -472,6 +472,12 @@ namespace Assistant.Localization {
             }
         }
         
+        internal static string LogLoadMore {
+            get {
+                return ResourceManager.GetString("LogLoadMore", resourceCulture);
+            }
+        }
+        
         /// <summary>
         ///   Looks up a localized string similar to 51.178.79.228_22005.
         /// </summary>
@@ -1056,6 +1062,141 @@ namespace Assistant.Localization {
         internal static string TranslationPrompt {
             get {
                 return ResourceManager.GetString("TranslationPrompt", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Preset {0}.
+        /// </summary>
+        internal static string TranslationPreset {
+            get {
+                return ResourceManager.GetString("TranslationPreset", resourceCulture);
+            }
+        }
+        
+        internal static string TranslationSettingsTab {
+            get {
+                return ResourceManager.GetString("TranslationSettingsTab", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsTab {
+            get {
+                return ResourceManager.GetString("SpecialNounsTab", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsImport {
+            get {
+                return ResourceManager.GetString("SpecialNounsImport", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsOpenFolder {
+            get {
+                return ResourceManager.GetString("SpecialNounsOpenFolder", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsExample {
+            get {
+                return ResourceManager.GetString("SpecialNounsExample", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsFiles {
+            get {
+                return ResourceManager.GetString("SpecialNounsFiles", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsEntries {
+            get {
+                return ResourceManager.GetString("SpecialNounsEntries", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsAdd {
+            get {
+                return ResourceManager.GetString("SpecialNounsAdd", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsUpdate {
+            get {
+                return ResourceManager.GetString("SpecialNounsUpdate", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsSave {
+            get {
+                return ResourceManager.GetString("SpecialNounsSave", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsCancel {
+            get {
+                return ResourceManager.GetString("SpecialNounsCancel", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsDirtyPrompt {
+            get {
+                return ResourceManager.GetString("SpecialNounsDirtyPrompt", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsDelete {
+            get {
+                return ResourceManager.GetString("SpecialNounsDelete", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsHint {
+            get {
+                return ResourceManager.GetString("SpecialNounsHint", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsImported {
+            get {
+                return ResourceManager.GetString("SpecialNounsImported", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsEn {
+            get {
+                return ResourceManager.GetString("SpecialNounsEn", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsZhCn {
+            get {
+                return ResourceManager.GetString("SpecialNounsZhCn", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsZhTw {
+            get {
+                return ResourceManager.GetString("SpecialNounsZhTw", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsAddError {
+            get {
+                return ResourceManager.GetString("SpecialNounsAddError", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsImportError {
+            get {
+                return ResourceManager.GetString("SpecialNounsImportError", resourceCulture);
+            }
+        }
+        
+        internal static string SpecialNounsNoTerms {
+            get {
+                return ResourceManager.GetString("SpecialNounsNoTerms", resourceCulture);
             }
         }
 

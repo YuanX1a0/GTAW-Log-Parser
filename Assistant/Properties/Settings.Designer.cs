@@ -550,6 +550,78 @@ namespace Assistant.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TranslationPrompt1 {
+            get {
+                return ((string)(this["TranslationPrompt1"]));
+            }
+            set {
+                this["TranslationPrompt1"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TranslationPrompt2 {
+            get {
+                return ((string)(this["TranslationPrompt2"]));
+            }
+            set {
+                this["TranslationPrompt2"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TranslationPrompt3 {
+            get {
+                return ((string)(this["TranslationPrompt3"]));
+            }
+            set {
+                this["TranslationPrompt3"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TranslationPrompt4 {
+            get {
+                return ((string)(this["TranslationPrompt4"]));
+            }
+            set {
+                this["TranslationPrompt4"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TranslationPrompt5 {
+            get {
+                return ((string)(this["TranslationPrompt5"]));
+            }
+            set {
+                this["TranslationPrompt5"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int TranslationPromptPresetIndex {
+            get {
+                return ((int)(this["TranslationPromptPresetIndex"]));
+            }
+            set {
+                this["TranslationPromptPresetIndex"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool SendTranslationEnabled {
             get {
@@ -629,6 +701,78 @@ namespace Assistant.Properties {
             }
             set {
                 this["SendTranslationPrompt"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendTranslationPrompt1 {
+            get {
+                return ((string)(this["SendTranslationPrompt1"]));
+            }
+            set {
+                this["SendTranslationPrompt1"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendTranslationPrompt2 {
+            get {
+                return ((string)(this["SendTranslationPrompt2"]));
+            }
+            set {
+                this["SendTranslationPrompt2"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendTranslationPrompt3 {
+            get {
+                return ((string)(this["SendTranslationPrompt3"]));
+            }
+            set {
+                this["SendTranslationPrompt3"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendTranslationPrompt4 {
+            get {
+                return ((string)(this["SendTranslationPrompt4"]));
+            }
+            set {
+                this["SendTranslationPrompt4"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SendTranslationPrompt5 {
+            get {
+                return ((string)(this["SendTranslationPrompt5"]));
+            }
+            set {
+                this["SendTranslationPrompt5"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int SendTranslationPromptPresetIndex {
+            get {
+                return ((int)(this["SendTranslationPromptPresetIndex"]));
+            }
+            set {
+                this["SendTranslationPromptPresetIndex"] = value;
             }
         }
         

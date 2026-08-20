@@ -369,7 +369,7 @@ namespace Assistant.Controllers
                     Properties.Settings.Default.SendTranslationProvider,
                     apiKey,
                     model,
-                    Properties.Settings.Default.SendTranslationPrompt,
+                    AppController.GetActiveSendTranslationPrompt(),
                     Properties.Settings.Default.TranslationStyle,
                     Properties.Settings.Default.SendDeepSeekReasoningSpeed,
                     Properties.Settings.Default.SendCustomEndpoint);

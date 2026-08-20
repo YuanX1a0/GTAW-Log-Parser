@@ -11,7 +11,7 @@ namespace Assistant.Controllers
 {
     public static class AppController
     {
-        public const string AssemblyVersion = "6.2.1";
+        public const string AssemblyVersion = "6.3.0";
         public static readonly string Version = "v" + AssemblyVersion;
         public const bool IsBetaVersion = false;
         public static bool CanFollowSystemColor = false;
@@ -71,6 +71,49 @@ namespace Assistant.Controllers
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Returns the currently active translation prompt preset (1-5).
+        /// Falls back to the legacy single TranslationPrompt value when the
+        /// active preset slot is empty.
+        /// </summary>
+        public static string GetActiveTranslationPrompt()
+        {
+            string value = GetPromptSlot(Properties.Settings.Default.TranslationPromptPresetIndex,
+                Properties.Settings.Default.TranslationPrompt1,
+                Properties.Settings.Default.TranslationPrompt2,
+                Properties.Settings.Default.TranslationPrompt3,
+                Properties.Settings.Default.TranslationPrompt4,
+                Properties.Settings.Default.TranslationPrompt5);
+            if (string.IsNullOrWhiteSpace(value))
+                value = Properties.Settings.Default.TranslationPrompt;
+            return value ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Returns the currently active send-translation prompt preset (1-5).
+        /// Falls back to the legacy single SendTranslationPrompt value when
+        /// the active preset slot is empty.
+        /// </summary>
+        public static string GetActiveSendTranslationPrompt()
+        {
+            string value = GetPromptSlot(Properties.Settings.Default.SendTranslationPromptPresetIndex,
+                Properties.Settings.Default.SendTranslationPrompt1,
+                Properties.Settings.Default.SendTranslationPrompt2,
+                Properties.Settings.Default.SendTranslationPrompt3,
+                Properties.Settings.Default.SendTranslationPrompt4,
+                Properties.Settings.Default.SendTranslationPrompt5);
+            if (string.IsNullOrWhiteSpace(value))
+                value = Properties.Settings.Default.SendTranslationPrompt;
+            return value ?? string.Empty;
+        }
+
+        private static string GetPromptSlot(int index, params string[] slots)
+        {
+            if (index < 1 || index > slots.Length)
+                return string.Empty;
+            return slots[index - 1] ?? string.Empty;
         }
 
         /// <summary>
