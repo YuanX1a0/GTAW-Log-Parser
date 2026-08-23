@@ -999,6 +999,48 @@ namespace Assistant.Localization {
             }
         }
 
+        internal static string GoogleTranslateSource {
+            get {
+                return ResourceManager.GetString("GoogleTranslateSource", resourceCulture);
+            }
+        }
+
+        internal static string GoogleSourceAuto {
+            get {
+                return ResourceManager.GetString("GoogleSourceAuto", resourceCulture);
+            }
+        }
+
+        internal static string GoogleSourceGtx {
+            get {
+                return ResourceManager.GetString("GoogleSourceGtx", resourceCulture);
+            }
+        }
+
+        internal static string GoogleSourceAt {
+            get {
+                return ResourceManager.GetString("GoogleSourceAt", resourceCulture);
+            }
+        }
+
+        internal static string GoogleSourceLegacy {
+            get {
+                return ResourceManager.GetString("GoogleSourceLegacy", resourceCulture);
+            }
+        }
+
+        internal static string GoogleSourceCom {
+            get {
+                return ResourceManager.GetString("GoogleSourceCom", resourceCulture);
+            }
+        }
+
+        internal static string GoogleSourceCn {
+            get {
+                return ResourceManager.GetString("GoogleSourceCn", resourceCulture);
+            }
+        }
+
         internal static string TranslationProviderDeepSeek {
             get {
                 return ResourceManager.GetString("TranslationProviderDeepSeek", resourceCulture);

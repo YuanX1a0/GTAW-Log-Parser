@@ -17,7 +17,34 @@ namespace Assistant.Controllers
     /// </summary>
     public static class TranslationController
     {
-        private const string GoogleTranslateUrl = "https://translate.googleapis.com/translate_a/single?client=gtx&sl={0}&tl={1}&dt=t&q={2}";
+        /// <summary>
+        /// A selectable free Google Translate mirror source.
+        /// </summary>
+        public sealed class GoogleTranslateSource
+        {
+            public string Id;
+            public string Url;
+
+            public GoogleTranslateSource(string id, string url)
+            {
+                Id = id;
+                Url = url;
+            }
+        }
+
+        /// <summary>
+        /// The free Google Translate mirror endpoints. Different hosts and
+        /// client tokens have independent rate limits, so the player can pick
+        /// one or let the app try them all ("auto").
+        /// </summary>
+        public static readonly GoogleTranslateSource[] GoogleTranslateSources = new[]
+        {
+            new GoogleTranslateSource("gtx", "https://translate.googleapis.com/translate_a/single?client=gtx&sl={0}&tl={1}&dt=t&q={2}"),
+            new GoogleTranslateSource("at", "https://translate.googleapis.com/translate_a/single?client=at&sl={0}&tl={1}&dt=t&q={2}"),
+            new GoogleTranslateSource("legacy", "https://translate.googleapis.com/translate_a/t?client=gtx&sl={0}&tl={1}&dt=t&q={2}"),
+            new GoogleTranslateSource("com", "https://translate.google.com/translate_a/single?client=gtx&sl={0}&tl={1}&dt=t&q={2}"),
+            new GoogleTranslateSource("cn", "https://translate.google.cn/translate_a/single?client=gtx&sl={0}&tl={1}&dt=t&q={2}"),
+        };
         private const string DeepSeekChatUrl = "https://api.deepseek.com/v1/chat/completions";
         private const string DeepLFreeApiUrl = "https://api-free.deepl.com/v2/translate";
         private const string DeepLProApiUrl = "https://api.deepl.com/v2/translate";
@@ -121,6 +148,41 @@ namespace Assistant.Controllers
         private static bool cacheDirty;
         private static readonly Timer CacheFlushTimer;
 
+        // Rate-limit (HTTP 429) cooldown: once the provider keeps answering
+        // 429 the app pauses translation for a while instead of hammering it.
+        private static readonly object RateLimitLock = new object();
+        private static DateTime rateLimitCooldownUntil = DateTime.MinValue;
+        private static DateTime lastRateLimitLogAt = DateTime.MinValue;
+        private static readonly TimeSpan RateLimitCooldown = TimeSpan.FromSeconds(120);
+
+        /// <summary>
+        /// Whether the provider is currently inside the 429 cooldown window.
+        /// </summary>
+        public static bool IsInRateLimitCooldown()
+        {
+            lock (RateLimitLock)
+                return DateTime.Now < rateLimitCooldownUntil;
+        }
+
+        /// <summary>
+        /// Starts (or extends) the 429 cooldown so subsequent translation
+        /// attempts fail fast without burning more requests.
+        /// </summary>
+        private static void EnterRateLimitCooldown()
+        {
+            lock (RateLimitLock)
+                rateLimitCooldownUntil = DateTime.Now.Add(RateLimitCooldown);
+        }
+
+        /// <summary>
+        /// Clears the 429 cooldown (used after a successful request).
+        /// </summary>
+        private static void ClearRateLimitCooldown()
+        {
+            lock (RateLimitLock)
+                rateLimitCooldownUntil = DateTime.MinValue;
+        }
+
         private static int _cacheHits;
         private static int _fuzzyCacheHits;
 
@@ -200,11 +262,24 @@ namespace Assistant.Controllers
         /// Appends a translation failure reason to the on-disk error log so the
         /// user (or support) can see why a chat line stayed in the original
         /// language instead of showing a translation.
+        /// During a rate-limit cooldown the repeated 429 errors are throttled
+        /// to one line every 30 seconds instead of spamming the log.
         /// </summary>
         public static void LogTranslationError(string provider, string message)
         {
             try
             {
+                lock (RateLimitLock)
+                {
+                    if (DateTime.Now < rateLimitCooldownUntil)
+                    {
+                        if ((DateTime.Now - lastRateLimitLogAt).TotalSeconds < 30)
+                            return;
+                        lastRateLimitLogAt = DateTime.Now;
+                        int remaining = (int)Math.Ceiling((rateLimitCooldownUntil - DateTime.Now).TotalSeconds);
+                        message += "（限流冷却中，约 " + remaining + " 秒后自动恢复）";
+                    }
+                }
                 Directory.CreateDirectory(CacheFileDirectory);
                 string line = string.Format("{0:HH:mm:ss} [{1}] {2}{3}", DateTime.Now, provider ?? "?", message, Environment.NewLine);
                 File.AppendAllText(ErrorLogPath, line, Encoding.UTF8);
@@ -800,6 +875,12 @@ namespace Assistant.Controllers
             if (string.IsNullOrWhiteSpace(text))
                 return string.Empty;
 
+            // During a rate-limit cooldown the provider is still throttled, so
+            // fail fast instead of burning more requests (the caller falls back
+            // to the original text). The error log throttles these messages.
+            if (IsInRateLimitCooldown())
+                throw new InvalidOperationException("接口限流冷却中，请稍后再试");
+
             TranslationStats.RecordTranslation(text);
 
             // Protect special nouns (place names etc.) before anything else so
@@ -870,6 +951,9 @@ namespace Assistant.Controllers
         /// Translates the text using the free Google Translate endpoint.
         /// Timestamps and links are preserved as-is; text inside brackets is
         /// translated while the bracket characters stay half-width.
+        /// Several mirror endpoints are tried in order (different hosts and
+        /// client tokens have independent rate limits), so a 429 on one source
+        /// automatically falls through to the next instead of failing.
         /// </summary>
         public static string Translate(string text, string targetLanguage, string sourceLanguage)
         {
@@ -904,28 +988,98 @@ namespace Assistant.Controllers
             List<string> protectedTokens = new List<string>();
             string protectedText = ProtectTokens(text, protectedTokens);
 
-            string url = string.Format(
-                GoogleTranslateUrl,
-                Uri.EscapeDataString(string.IsNullOrWhiteSpace(sourceLanguage) ? "auto" : sourceLanguage),
-                Uri.EscapeDataString(targetLanguage),
-                Uri.EscapeDataString(protectedText));
+            string sl = Uri.EscapeDataString(string.IsNullOrWhiteSpace(sourceLanguage) ? "auto" : sourceLanguage);
+            string tl = Uri.EscapeDataString(targetLanguage);
+            string q = Uri.EscapeDataString(protectedText);
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.UserAgent = "Mozilla/5.0";
-            request.Timeout = 10000;
+            // Honour the user's source choice ("auto" tries every mirror).
+            IEnumerable<GoogleTranslateSource> sources = GetSelectedGoogleSources();
 
-            string translated;
-            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-            using (Stream stream = response.GetResponseStream())
-            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
-                translated = ParseTranslation(reader.ReadToEnd());
+            // Try every selected source in order. A rate-limited source (429)
+            // falls through to the next one; only when all of them are
+            // throttled does the app enter the cooldown window.
+            WebException lastRateLimit = null;
+            foreach (GoogleTranslateSource source in sources)
+            {
+                string url = string.Format(source.Url, sl, tl, q);
+                try
+                {
+                    // TryGoogleEndpoint already parses the answer and returns
+                    // the translation text (null = this mirror failed).
+                    string translated = TryGoogleEndpoint(url);
+                    if (string.IsNullOrEmpty(translated))
+                        continue; // failed mirror, try the next one
 
-            TranslationStats.RecordApiCallEstimated(text);
+                    ClearRateLimitCooldown();
+                    TranslationStats.RecordApiCallEstimated(text);
+                    string result = NormalizePunctuation(RestoreTokens(translated, protectedTokens));
+                    if (Assistant.Properties.Settings.Default.EnableTranslationCache)
+                        CacheTranslation(cacheKey, result);
+                    return result;
+                }
+                catch (WebException ex)
+                {
+                    lastRateLimit = ex; // 429: try the next mirror
+                }
+            }
 
-            string result = NormalizePunctuation(RestoreTokens(translated, protectedTokens));
-            if (Assistant.Properties.Settings.Default.EnableTranslationCache)
-                CacheTranslation(cacheKey, result);
-            return result;
+            if (lastRateLimit != null)
+            {
+                EnterRateLimitCooldown();
+                LogEvent("翻译", "所有 Google 翻译源均被限流(429)，暂停翻译 " + (int)RateLimitCooldown.TotalSeconds + " 秒");
+                throw lastRateLimit;
+            }
+            throw new WebException("所有 Google 翻译源均不可用。");
+        }
+
+        /// <summary>
+        /// Returns the Google Translate mirror sources the user selected in the
+        /// settings. "auto" (default) returns all mirrors so the app can fall
+        /// through on 429; any other value returns only that single mirror.
+        /// </summary>
+        private static IEnumerable<GoogleTranslateSource> GetSelectedGoogleSources()
+        {
+            string selected = Assistant.Properties.Settings.Default.GoogleTranslateSource;
+            if (string.IsNullOrWhiteSpace(selected) || string.Equals(selected, "auto", StringComparison.OrdinalIgnoreCase))
+                return GoogleTranslateSources;
+            foreach (GoogleTranslateSource source in GoogleTranslateSources)
+            {
+                if (string.Equals(source.Id, selected, StringComparison.OrdinalIgnoreCase))
+                    return new[] { source };
+            }
+            return GoogleTranslateSources;
+        }
+
+        /// <summary>
+        /// Calls one Google Translate mirror once and returns the parsed
+        /// translation. Returns null for non-rate-limit failures (network
+        /// errors, bad answers) so the caller can try the next mirror.
+        /// </summary>
+        private static string TryGoogleEndpoint(string url)
+        {
+            try
+            {
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+                req.UserAgent = "Mozilla/5.0";
+                req.Timeout = 10000;
+                string json;
+                using (HttpWebResponse response = (HttpWebResponse)req.GetResponse())
+                using (Stream stream = response.GetResponseStream())
+                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                    json = reader.ReadToEnd();
+                return ParseTranslation(json);
+            }
+            catch (WebException ex)
+            {
+                HttpWebResponse error = ex.Response as HttpWebResponse;
+                if (error != null && (int)error.StatusCode == 429)
+                    throw; // rate limited: let the caller switch mirrors
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -1557,26 +1711,80 @@ namespace Assistant.Controllers
         }
 
         /// <summary>
+        /// Executes an HTTP request, retrying up to maxRetries times when the
+        /// provider answers 429 (rate limited). Free Google Translate and free
+        /// Gemini keys are throttled aggressively, so the request waits for
+        /// the Retry-After header (or backs off exponentially: 1s, 2s, 4s)
+        /// and then tries again instead of failing immediately. When the
+        /// retries are exhausted the app enters a cooldown window so it stops
+        /// hammering the provider; a later successful request clears it.
+        /// </summary>
+        private static string SendRequestWithRetry(Func<HttpWebRequest> createRequest, int maxRetries = 3)
+        {
+            int attempt = 0;
+            while (true)
+            {
+                HttpWebRequest request = createRequest();
+                try
+                {
+                    using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                    using (Stream stream = response.GetResponseStream())
+                    using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        ClearRateLimitCooldown();
+                        return reader.ReadToEnd();
+                    }
+                }
+                catch (WebException ex)
+                {
+                    HttpWebResponse error = ex.Response as HttpWebResponse;
+                    bool rateLimited = error != null && (int)error.StatusCode == 429;
+                    if (!rateLimited || attempt >= maxRetries)
+                    {
+                        if (rateLimited)
+                        {
+                            EnterRateLimitCooldown();
+                            LogEvent("翻译", "接口限流(429)持续，已自动重试 " + maxRetries + " 次仍失败，暂停翻译 " + (int)RateLimitCooldown.TotalSeconds + " 秒");
+                        }
+                        throw;
+                    }
+
+                    int waitSeconds = 1 << attempt; // 1s, 2s, 4s
+                    try
+                    {
+                        string retryAfter = error.Headers["Retry-After"];
+                        int parsed;
+                        if (!string.IsNullOrWhiteSpace(retryAfter) && int.TryParse(retryAfter, out parsed) && parsed > 0)
+                            waitSeconds = Math.Min(parsed, 30);
+                    }
+                    catch { /* keep the exponential backoff */ }
+                    attempt++;
+                    LogEvent("翻译", "接口限流(429)，等待 " + waitSeconds + " 秒后重试");
+                    Thread.Sleep(waitSeconds * 1000);
+                }
+            }
+        }
+
+        /// <summary>
         /// Sends a JSON chat-completions body and returns the raw response text.
         /// </summary>
         private static string SendChatRequestBody(string url, string payload, string apiKey)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "POST";
-            request.ContentType = "application/json";
-            request.UserAgent = "Mozilla/5.0";
-            request.Timeout = 30000;
-            if (!string.IsNullOrWhiteSpace(apiKey))
-                request.Headers["Authorization"] = "Bearer " + apiKey;
+            return SendRequestWithRetry(() =>
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.ContentType = "application/json";
+                request.UserAgent = "Mozilla/5.0";
+                request.Timeout = 30000;
+                if (!string.IsNullOrWhiteSpace(apiKey))
+                    request.Headers["Authorization"] = "Bearer " + apiKey;
 
-            byte[] body = Encoding.UTF8.GetBytes(payload);
-            using (Stream requestStream = request.GetRequestStream())
-                requestStream.Write(body, 0, body.Length);
-
-            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-            using (Stream stream = response.GetResponseStream())
-            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
-                return reader.ReadToEnd();
+                byte[] body = Encoding.UTF8.GetBytes(payload);
+                using (Stream requestStream = request.GetRequestStream())
+                    requestStream.Write(body, 0, body.Length);
+                return request;
+            });
         }
 
         /// <summary>

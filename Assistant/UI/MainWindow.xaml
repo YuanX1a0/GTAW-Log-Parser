@@ -314,6 +314,14 @@
                         <Label x:Name="TranslationProviderLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="TranslationProviderList" Grid.Column="1" SelectionChanged="TranslationProviderList_SelectionChanged" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
                     </Grid>
+                    <Grid x:Name="GoogleSourceRow" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="GoogleSourceLabel" Grid.Column="0" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="GoogleSourceList" Grid.Column="1" SelectionChanged="GoogleSourceList_SelectionChanged" VerticalAlignment="Center" HorizontalAlignment="Left" Width="280"/>
+                    </Grid>
                     <Grid x:Name="DeepSeekApiKeyRow" Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="170"/>

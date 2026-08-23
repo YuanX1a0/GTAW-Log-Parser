@@ -554,6 +554,7 @@ namespace Assistant.UI
             ShowGameToastsCheckBox.Content = Strings.ShowGameToasts;
             SettingsPageTranslationCheckBox.Content = Strings.SettingsPageTranslation;
             TranslationProviderLabel.Content = Strings.TranslationProvider;
+            GoogleSourceLabel.Content = Strings.GoogleTranslateSource;
             DeepSeekApiKeyLabel.Content = Strings.DeepSeekApiKey;
             DeepSeekModelLabel.Content = Strings.DeepSeekModel;
             DeepSeekSpeedLabel.Content = Strings.DeepSeekSpeed;
@@ -905,6 +906,14 @@ namespace Assistant.UI
             TranslationProviderList.Items.Add(Strings.TranslationProviderDoubao);
             TranslationProviderList.Items.Add(Strings.TranslationProviderCustom);
             TranslationProviderList.Items.Add(Strings.TranslationProviderZoom);
+
+            GoogleSourceList.Items.Clear();
+            GoogleSourceList.Items.Add(Strings.GoogleSourceAuto);
+            GoogleSourceList.Items.Add(Strings.GoogleSourceGtx);
+            GoogleSourceList.Items.Add(Strings.GoogleSourceAt);
+            GoogleSourceList.Items.Add(Strings.GoogleSourceLegacy);
+            GoogleSourceList.Items.Add(Strings.GoogleSourceCom);
+            GoogleSourceList.Items.Add(Strings.GoogleSourceCn);
 
             TranslationDisplayModeList.Items.Clear();
             TranslationDisplayModeList.Items.Add(Strings.TranslationDisplayAppend);
@@ -1300,6 +1309,7 @@ namespace Assistant.UI
             if (SendTargetLanguageList.SelectedIndex >= 0 && SendTargetLanguageList.SelectedIndex < TranslationController.TargetLanguages.Length)
                 Properties.Settings.Default.SendTargetLanguage = TranslationController.TargetLanguages[SendTargetLanguageList.SelectedIndex].Key;
             Properties.Settings.Default.TranslationProvider = ProviderName(TranslationProviderList.SelectedIndex);
+            Properties.Settings.Default.GoogleTranslateSource = GoogleSourceId(GoogleSourceList.SelectedIndex);
             Properties.Settings.Default.DeepSeekApiKey = SanitizeKey(DeepSeekApiKeyBox.Password);
             Properties.Settings.Default.DeepLApiKey = SanitizeKey(DeepLApiKeyBox.Password);
             Properties.Settings.Default.DoubaoApiKey = SanitizeKey(DoubaoApiKeyBox.Password);
@@ -1372,6 +1382,7 @@ namespace Assistant.UI
             SelectSendLanguage(SendSourceLanguageList, Properties.Settings.Default.SendSourceLanguage, true);
             SelectSendLanguage(SendTargetLanguageList, Properties.Settings.Default.SendTargetLanguage, false);
             TranslationProviderList.SelectedIndex = ProviderIndex(Properties.Settings.Default.TranslationProvider);
+            GoogleSourceList.SelectedIndex = GoogleSourceIndex(Properties.Settings.Default.GoogleTranslateSource);
             DeepSeekApiKeyBox.Password = Properties.Settings.Default.DeepSeekApiKey;
             DeepLApiKeyBox.Password = Properties.Settings.Default.DeepLApiKey;
             DoubaoApiKeyBox.Password = Properties.Settings.Default.DoubaoApiKey;
@@ -2258,6 +2269,35 @@ namespace Assistant.UI
         }
 
         /// <summary>
+        /// Maps the Google source ComboBox selection to its setting id.
+        /// </summary>
+        private static string GoogleSourceId(int index)
+        {
+            switch (index)
+            {
+                case 1: return "gtx";
+                case 2: return "at";
+                case 3: return "legacy";
+                case 4: return "com";
+                case 5: return "cn";
+                default: return "auto";
+            }
+        }
+
+        /// <summary>
+        /// Maps a stored Google source id back to its ComboBox index.
+        /// </summary>
+        private static int GoogleSourceIndex(string id)
+        {
+            if (string.Equals(id, "gtx", StringComparison.OrdinalIgnoreCase)) return 1;
+            if (string.Equals(id, "at", StringComparison.OrdinalIgnoreCase)) return 2;
+            if (string.Equals(id, "legacy", StringComparison.OrdinalIgnoreCase)) return 3;
+            if (string.Equals(id, "com", StringComparison.OrdinalIgnoreCase)) return 4;
+            if (string.Equals(id, "cn", StringComparison.OrdinalIgnoreCase)) return 5;
+            return 0;
+        }
+
+        /// <summary>
         /// Returns Visible for true and Collapsed for false.
         /// </summary>
         private static Visibility ToVisibility(bool visible)
@@ -2277,7 +2317,9 @@ namespace Assistant.UI
             bool doubao = index == 3;
             bool custom = index == 4;
             bool zoom = index == 5;
+            bool google = index == 0 || index == -1;
 
+            GoogleSourceRow.Visibility = ToVisibility(google);
             DeepSeekApiKeyRow.Visibility = ToVisibility(deepSeek);
             DeepSeekModelRow.Visibility = ToVisibility(deepSeek);
             DeepSeekSpeedRow.Visibility = ToVisibility(deepSeek);
@@ -2300,6 +2342,15 @@ namespace Assistant.UI
         private void TranslationProviderList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             UpdateTranslationProviderState();
+            if (!_loadingTranslationSettings)
+                SaveTranslationSettings();
+        }
+
+        /// <summary>
+        /// Saves the setting when the user picks a Google Translate source.
+        /// </summary>
+        private void GoogleSourceList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
             if (!_loadingTranslationSettings)
                 SaveTranslationSettings();
         }

@@ -43,7 +43,7 @@ namespace Assistant.Controllers
         private static readonly Queue<FinishedTranslation> FinishedTranslations = new Queue<FinishedTranslation>();
         private static readonly HashSet<string> InFlightTranslations = new HashSet<string>();
         private static readonly List<Thread> TranslationWorkers = new List<Thread>();
-        private const int MaxTranslationWorkers = 4;
+        private const int MaxTranslationWorkers = 2;
 
         public static string SessionFilePath { get { return SessionFile; } }
         public static DateTime SessionStartedAt { get { return sessionStartedAt == DateTime.MinValue ? DateTime.Now : sessionStartedAt; } }

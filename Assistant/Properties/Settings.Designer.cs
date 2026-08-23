@@ -1099,5 +1099,17 @@ namespace Assistant.Properties {
                 this["EnableManualTranslate"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("auto")]
+        public string GoogleTranslateSource {
+            get {
+                return ((string)(this["GoogleTranslateSource"]));
+            }
+            set {
+                this["GoogleTranslateSource"] = value;
+            }
+        }
     }
 }
