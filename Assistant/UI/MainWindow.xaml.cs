@@ -550,6 +550,8 @@ namespace Assistant.UI
             SourceLanguageLabel.Content = Strings.SourceLanguage;
             TranslationBulkHotkeyLabel.Content = Strings.TranslationBulkHotkey;
             AutoTranslateCheckBox.Content = Strings.AutoTranslate;
+            AIContextCheckBox.Content = Strings.EnableAIContextTranslation;
+            AIContextHint.Text = Strings.EnableAIContextTranslationHint;
             AutoTranslateHotkeyLabel.Content = Strings.AutoTranslateHotkey;
             ShowGameToastsCheckBox.Content = Strings.ShowGameToasts;
             SettingsPageTranslationCheckBox.Content = Strings.SettingsPageTranslation;
@@ -1339,6 +1341,7 @@ namespace Assistant.UI
             string autoHotkey = (AutoTranslateHotkeyBox.Text ?? string.Empty).Trim();
             Properties.Settings.Default.ShowGameToasts = ShowGameToastsCheckBox.IsChecked == true;
             Properties.Settings.Default.SettingsPageTranslation = SettingsPageTranslationCheckBox.IsChecked == true;
+            Properties.Settings.Default.EnableAIContextTranslation = AIContextCheckBox.IsChecked == true;
             Properties.Settings.Default.AutoTranslateHotkey = string.IsNullOrEmpty(autoHotkey) ? "Ctrl+Shift+F9" : autoHotkey;
             Properties.Settings.Default.SendTranslationEnabled = SendTranslationEnabled.IsChecked == true;
             Properties.Settings.Default.EnableManualTranslate = EnableManualTranslateCheckBox.IsChecked == true;
@@ -1419,6 +1422,7 @@ namespace Assistant.UI
             TranslationStyleList.SelectedIndex = "formal".Equals(Properties.Settings.Default.TranslationStyle) ? 1 : "literary".Equals(Properties.Settings.Default.TranslationStyle) ? 2 : 0;
             TranslationBulkHotkeyBox.Text = Properties.Settings.Default.TranslationBulkHotkey;
             AutoTranslateCheckBox.IsChecked = Properties.Settings.Default.AutoTranslate;
+            AIContextCheckBox.IsChecked = Properties.Settings.Default.EnableAIContextTranslation;
             AutoTranslateHotkeyBox.Text = Properties.Settings.Default.AutoTranslateHotkey;
             ShowGameToastsCheckBox.IsChecked = Properties.Settings.Default.ShowGameToasts;
             SettingsPageTranslationCheckBox.IsChecked = Properties.Settings.Default.SettingsPageTranslation;
@@ -2323,6 +2327,7 @@ namespace Assistant.UI
             DeepSeekApiKeyRow.Visibility = ToVisibility(deepSeek);
             DeepSeekModelRow.Visibility = ToVisibility(deepSeek);
             DeepSeekSpeedRow.Visibility = ToVisibility(deepSeek);
+            AIContextRow.Visibility = ToVisibility(deepSeek || doubao || custom);
             TranslationPromptRow.Visibility = ToVisibility(deepSeek || doubao || custom);
             DeepLApiKeyRow.Visibility = ToVisibility(deepL);
             DoubaoApiKeyRow.Visibility = ToVisibility(doubao);
@@ -2353,6 +2358,20 @@ namespace Assistant.UI
         {
             if (!_loadingTranslationSettings)
                 SaveTranslationSettings();
+        }
+
+        /// <summary>
+        /// Persists the AI context toggle. Turning it off clears the buffered
+        /// chat history so the next enable starts from a clean slate.
+        /// </summary>
+        private void AIContextCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!_loadingTranslationSettings)
+            {
+                SaveTranslationSettings();
+                if (AIContextCheckBox.IsChecked != true)
+                    TranslationController.ClearChatContext();
+            }
         }
 
         /// <summary>

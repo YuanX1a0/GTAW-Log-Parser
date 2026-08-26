@@ -164,6 +164,8 @@
   "GoogleSourceLegacy": "translate.googleapis.com (t)",
   "GoogleSourceCom": "translate.google.com",
   "GoogleSourceCn": "translate.google.cn",
+  "EnableAIContextTranslation": "AI context translation",
+  "EnableAIContextTranslationHint": "Use recent chat history as context so the AI understands what was said before (AI providers only)",
   "TranslationProviderDeepSeek": "DeepSeek (AI)",
   "DeepSeekApiKey": "DeepSeek API key:",
   "DeepSeekModel": "DeepSeek model:",

@@ -1111,5 +1111,17 @@ namespace Assistant.Properties {
                 this["GoogleTranslateSource"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool EnableAIContextTranslation {
+            get {
+                return ((bool)(this["EnableAIContextTranslation"]));
+            }
+            set {
+                this["EnableAIContextTranslation"] = value;
+            }
+        }
     }
 }

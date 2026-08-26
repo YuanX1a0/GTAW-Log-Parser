@@ -155,6 +155,82 @@ namespace Assistant.Controllers
         private static DateTime lastRateLimitLogAt = DateTime.MinValue;
         private static readonly TimeSpan RateLimitCooldown = TimeSpan.FromSeconds(120);
 
+        // Recent chat history used as context for AI translations. The chat
+        // capture feeds the raw message lines here; when "AI context
+        // translation" is enabled the recent lines are injected into the AI
+        // system prompt so the model understands what was said before.
+        private static readonly object ContextLock = new object();
+        private static readonly List<string> ChatContextLines = new List<string>();
+        private const int MaxChatContextLines = 30;
+        private const int MaxChatContextLineLength = 200;
+
+        /// <summary>
+        /// Whether AI context translation is currently enabled in the settings.
+        /// The chat capture checks this before feeding raw lines to the buffer.
+        /// </summary>
+        public static bool ChatContextEnabled
+        {
+            get { return Assistant.Properties.Settings.Default.EnableAIContextTranslation; }
+        }
+
+        /// <summary>
+        /// Adds one raw chat line to the recent-chat context buffer (used only
+        /// when AI context translation is enabled). Old lines are trimmed.
+        /// </summary>
+        public static void PushChatContext(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return;
+            string line = text.Trim();
+            if (line.Length > MaxChatContextLineLength)
+                line = line.Substring(0, MaxChatContextLineLength);
+            lock (ContextLock)
+            {
+                ChatContextLines.Add(line);
+                while (ChatContextLines.Count > MaxChatContextLines)
+                    ChatContextLines.RemoveAt(0);
+            }
+        }
+
+        /// <summary>
+        /// Empties the recent-chat context buffer.
+        /// </summary>
+        public static void ClearChatContext()
+        {
+            lock (ContextLock)
+                ChatContextLines.Clear();
+        }
+
+        /// <summary>
+        /// Returns a prompt fragment describing the recent chat history, or
+        /// null when AI context translation is disabled or no history exists.
+        /// The fragment tells the model to only use the history as context and
+        /// never translate or repeat it.
+        /// </summary>
+        private static string BuildChatContextFragment()
+        {
+            if (!Assistant.Properties.Settings.Default.EnableAIContextTranslation)
+                return null;
+            string joined;
+            lock (ContextLock)
+            {
+                if (ChatContextLines.Count == 0)
+                    return null;
+                joined = string.Join("\n", ChatContextLines);
+            }
+            return "\nRecent chat history for context (do NOT translate or repeat it, use it only to understand the current message):\n<history>\n" + joined + "\n</history>";
+        }
+
+        /// <summary>
+        /// Appends the recent chat history to the AI system prompt when the
+        /// setting is on. Returns the prompt unchanged otherwise.
+        /// </summary>
+        private static string AppendChatContext(string systemPrompt)
+        {
+            string fragment = BuildChatContextFragment();
+            return fragment == null ? systemPrompt : systemPrompt + fragment;
+        }
+
         /// <summary>
         /// Whether the provider is currently inside the 429 cooldown window.
         /// </summary>
@@ -897,8 +973,19 @@ namespace Assistant.Controllers
             }
 
             string normalizedText = NormalizeCacheKey(text);
+            string contextSignature = string.Empty;
+            if (Assistant.Properties.Settings.Default.EnableAIContextTranslation)
+            {
+                // When AI context translation is on, the chat history is part
+                // of the request, so it must be part of the cache key too or
+                // stale (context-free) answers would be served from the cache.
+                string joined;
+                lock (ContextLock)
+                    joined = string.Join("\n", ChatContextLines);
+                contextSignature = "|ctx:" + NormalizeCacheKey(joined);
+            }
             string cacheKey = "p:" + (provider ?? string.Empty) + "|e:" + (endpoint ?? string.Empty) + "|s:" + (sourceLanguage ?? string.Empty) + "|t:" + (targetLanguage ?? string.Empty)
-                + "|m:" + (model ?? string.Empty) + "|y:" + (style ?? string.Empty) + "|r:" + (reasoningSpeed ?? string.Empty) + "|q:" + (prompt ?? string.Empty) + "|" + normalizedText;
+                + "|m:" + (model ?? string.Empty) + "|y:" + (style ?? string.Empty) + "|r:" + (reasoningSpeed ?? string.Empty) + "|q:" + (prompt ?? string.Empty) + contextSignature + "|" + normalizedText;
             if (Assistant.Properties.Settings.Default.EnableTranslationCache)
             {
                 string cached = GetCachedTranslation(cacheKey);
@@ -1118,6 +1205,7 @@ namespace Assistant.Controllers
                     ? "Use a formal, polite and proper tone."
                     : "Use a literary, written and refined tone.";
             string systemPrompt = "You are a chat translator. " + sourceNote + " Translate the user's message into " + languageName + " (" + targetLanguage + "). Output only the translation without any explanations or quotes. Never translate or alter the GTB placeholder tokens. Never translate proper names, player names, place names, brand names, group names or common abbreviations (e.g. OOC, LFG, EMS, SASP); keep them exactly as written. Keep the overall meaning and tone of the original message. " + styleNote;
+            systemPrompt = AppendChatContext(systemPrompt);
             if (!string.IsNullOrWhiteSpace(prompt))
                 systemPrompt += " " + prompt.Trim();
             Dictionary<string, object> payloadDict = new Dictionary<string, object>
@@ -1294,6 +1382,7 @@ namespace Assistant.Controllers
                     ? "Use a formal, polite and proper tone."
                     : "Use a literary, written and refined tone.";
             string systemPrompt = "You are a chat translator. " + sourceNote + " Translate the user's message into " + languageName + " (" + targetLanguage + "). Output only the translation without any explanations or quotes. Never translate or alter the GTB placeholder tokens. Never translate proper names, player names, place names, brand names, group names or common abbreviations (e.g. OOC, LFG, EMS, SASP); keep them exactly as written. Keep the overall meaning and tone of the original message. " + styleNote;
+            systemPrompt = AppendChatContext(systemPrompt);
             if (!string.IsNullOrWhiteSpace(prompt))
                 systemPrompt += " " + prompt.Trim();
 
@@ -1612,6 +1701,7 @@ namespace Assistant.Controllers
                     ? "Use a formal, polite and proper tone."
                     : "Use a literary, written and refined tone.";
             string systemPrompt = "You are a chat translator. " + sourceNote + " Translate the user's message into " + languageName + " (" + targetLanguage + "). Output only the translation without any explanations or quotes. Never translate or alter the GTB placeholder tokens. Never translate proper names, player names, place names, brand names, group names or common abbreviations (e.g. OOC, LFG, EMS, SASP); keep them exactly as written. Keep the overall meaning and tone of the original message. " + styleNote;
+            systemPrompt = AppendChatContext(systemPrompt);
             if (!string.IsNullOrWhiteSpace(prompt))
                 systemPrompt += " " + prompt.Trim();
 

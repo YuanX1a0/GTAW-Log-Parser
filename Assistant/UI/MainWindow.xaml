@@ -346,6 +346,10 @@
                         <Label x:Name="DeepSeekSpeedLabel" Grid.Column="0" VerticalAlignment="Center"/>
                         <ComboBox x:Name="DeepSeekSpeedList" Grid.Column="1" SelectionChanged="DeepSeekSpeedList_SelectionChanged" VerticalAlignment="Center" HorizontalAlignment="Left" Width="260"/>
                     </Grid>
+                    <StackPanel x:Name="AIContextRow" Margin="0,8,0,0">
+                        <CheckBox x:Name="AIContextCheckBox" Checked="AIContextCheckBox_Changed" Unchecked="AIContextCheckBox_Changed"/>
+                        <TextBlock x:Name="AIContextHint" FontSize="11" Foreground="{DynamicResource FluentSecondaryForeground}" Margin="26,2,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
                     <Grid x:Name="DeepLApiKeyRow" Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="170"/>

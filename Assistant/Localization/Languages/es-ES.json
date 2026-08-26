@@ -164,6 +164,8 @@
   "GoogleSourceLegacy": "translate.googleapis.com (t)",
   "GoogleSourceCom": "translate.google.com",
   "GoogleSourceCn": "translate.google.cn",
+  "EnableAIContextTranslation": "Traducción con contexto IA",
+  "EnableAIContextTranslationHint": "Usa el historial reciente del chat como contexto para que la IA entienda lo que se dijo antes (solo proveedores IA)",
   "TranslationProviderDeepSeek": "DeepSeek (IA)",
   "DeepSeekApiKey": "Clave de API de DeepSeek:",
   "DeepSeekModel": "Modelo de DeepSeek:",

@@ -164,6 +164,8 @@
   "GoogleSourceLegacy": "translate.googleapis.com (t)",
   "GoogleSourceCom": "translate.google.com",
   "GoogleSourceCn": "translate.google.cn",
+  "EnableAIContextTranslation": "AI 上下文翻譯",
+  "EnableAIContextTranslationHint": "翻譯時參考最近聊天的內容，讓 AI 結合上下文理解（僅 AI 翻譯有效）",
   "TranslationProviderDeepSeek": "DeepSeek（AI）",
   "DeepSeekApiKey": "DeepSeek API 金鑰：",
   "DeepSeekModel": "DeepSeek 模型：",

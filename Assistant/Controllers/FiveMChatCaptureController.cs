@@ -221,7 +221,26 @@ namespace Assistant.Controllers
                 foreach (PendingTranslation item in pending)
                 {
                     if (InFlightTranslations.Add(item.Id))
+                    {
+                        // Feed the raw message into the recent-chat context so
+                        // later messages can be translated with this one as
+                        // background knowledge (AI context translation).
+                        if (TranslationController.ChatContextEnabled)
+                        {
+                            StringBuilder raw = new StringBuilder();
+                            foreach (TranslationSegment seg in item.Segments)
+                            {
+                                if (seg == null || string.IsNullOrWhiteSpace(seg.Text) || IsNonTranslatable(seg.Text))
+                                    continue;
+                                if (raw.Length > 0)
+                                    raw.Append(' ');
+                                raw.Append(seg.Text.Trim());
+                            }
+                            if (raw.Length > 0)
+                                TranslationController.PushChatContext(raw.ToString());
+                        }
                         PendingTranslations.Enqueue(item);
+                    }
                 }
             }
 

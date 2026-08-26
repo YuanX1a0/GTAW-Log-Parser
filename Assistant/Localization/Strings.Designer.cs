@@ -1041,6 +1041,18 @@ namespace Assistant.Localization {
             }
         }
 
+        internal static string EnableAIContextTranslation {
+            get {
+                return ResourceManager.GetString("EnableAIContextTranslation", resourceCulture);
+            }
+        }
+
+        internal static string EnableAIContextTranslationHint {
+            get {
+                return ResourceManager.GetString("EnableAIContextTranslationHint", resourceCulture);
+            }
+        }
+
         internal static string TranslationProviderDeepSeek {
             get {
                 return ResourceManager.GetString("TranslationProviderDeepSeek", resourceCulture);
