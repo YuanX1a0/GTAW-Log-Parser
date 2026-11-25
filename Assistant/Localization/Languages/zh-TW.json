@@ -144,7 +144,7 @@
   "SendDoubaoCloudApiKey": "翻譯器豆包在線 API Key：",
   "SendDoubaoCloudModel": "翻譯器豆包在線模型：",
   "SendDoubaoCloudEndpoint": "翻譯器介面地址（留空用預設）：",
-  "SettingsPageTranslation": "翻譯遊戲內設置頁面（調試）",
+  "SettingsPageTranslation": "漢化遊戲內介面（設定頁 / 助手選單）",
   "SectionGameTranslation": "遊戲功能翻譯",
   "OverviewCacheTitle": "翻譯快取",
   "OverviewCacheInfo": "共 {0} 條 · 佔用 {1}",

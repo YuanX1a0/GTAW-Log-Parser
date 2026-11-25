@@ -144,7 +144,7 @@
   "SendDoubaoCloudApiKey": "Clave API de Doubao Cloud del traductor:",
   "SendDoubaoCloudModel": "Modelo de Doubao Cloud del traductor:",
   "SendDoubaoCloudEndpoint": "Endpoint del traductor (vacío = predeterminado):",
-  "SettingsPageTranslation": "Traducir página de ajustes en el juego (depuración)",
+  "SettingsPageTranslation": "Traducir la interfaz del juego (ajustes y menús)",
   "SectionGameTranslation": "Traducción de funciones del juego",
   "OverviewCacheTitle": "Caché de traducción",
   "OverviewCacheInfo": "{0} entradas · {1}",

@@ -771,17 +771,23 @@ namespace Assistant.Controllers
             public void InstallSettingsPageTranslationHook(string mapJson)
             {
                 EnsureConnected();
-                string expression = "(function(){ if(window.__gtawStlV === 1){ return; } window.__gtawStlV = 1; var MAP = " + mapJson + "; "
-                    + "function tr(root){ if(!root) return; var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); var ns = []; while(w.nextNode()){ ns.push(w.currentNode); } for(var i = 0; i < ns.length; i++){ var n = ns[i]; var txt = (n.nodeValue || '').trim(); if(!txt) continue; if(MAP.hasOwnProperty(txt)){ n.nodeValue = MAP[txt]; } } } "
+                // The hook re-installs itself whenever the dictionary changes
+                // (hash of the map JSON), so adding entries needs no manual
+                // version bump and an old injection never keeps a stale map.
+                string expression = "(function(){ var MAP = " + mapJson + "; var raw = JSON.stringify(MAP); var h = 0; for(var i = 0; i < raw.length; i++){ h = ((h << 5) - h + raw.charCodeAt(i)) | 0; } if(window.__gtawStlHash === h){ return; } if(window.__gtawStlObs){ window.__gtawStlObs.disconnect(); window.__gtawStlObs = null; } window.__gtawStlHash = h; "
+                    + "function trText(n){ var txt = (n.nodeValue || '').trim(); if(!txt) return; if(MAP.hasOwnProperty(txt)){ n.nodeValue = MAP[txt]; return; } if(MAP.__pageFormat){ var m = /^page\\s*(\\d+)\\s*\\/\\s*(\\d+)$/i.exec(txt); if(m){ n.nodeValue = String(MAP.__pageFormat).replace('{0}', m[1]).replace('{1}', m[2]); } } } "
+                    + "function tr(root){ if(!root) return; var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); var ns = []; while(w.nextNode()){ ns.push(w.currentNode); } for(var i = 0; i < ns.length; i++){ trText(ns[i]); } } "
                     + "tr(document.body || document.documentElement); "
-                    + "var obs = new MutationObserver(function(muts){ for(var i = 0; i < muts.length; i++){ var m = muts[i]; if(m.type === 'childList' && m.addedNodes){ for(var j = 0; j < m.addedNodes.length; j++){ var node = m.addedNodes[j]; if(node.nodeType === 1){ tr(node); } else if(node.nodeType === 3){ var t3 = (node.nodeValue || '').trim(); if(t3 && MAP.hasOwnProperty(t3)){ node.nodeValue = MAP[t3]; } } } } } }); "
-                    + "obs.observe(document.body || document.documentElement, { childList: true, subtree: true }); window.__gtawStlObs = obs; })();";
-                Request("Runtime.evaluate", new Dictionary<string, object>
+                    + "var obs = new MutationObserver(function(muts){ for(var i = 0; i < muts.length; i++){ var m = muts[i]; if(m.type === 'characterData'){ trText(m.target); continue; } if(m.type === 'childList' && m.addedNodes){ for(var j = 0; j < m.addedNodes.length; j++){ var node = m.addedNodes[j]; if(node.nodeType === 1){ tr(node); } else if(node.nodeType === 3){ trText(node); } } } } }); "
+                    + "obs.observe(document.body || document.documentElement, { childList: true, subtree: true, characterData: true }); window.__gtawStlObs = obs; })();";
+                IDictionary<string, object> stlResult = Request("Runtime.evaluate", new Dictionary<string, object>
                 {
                     { "expression", expression },
                     { "contextId", contextId },
                     { "returnByValue", false }
                 });
+                if (stlResult != null && stlResult.ContainsKey("exceptionDetails"))
+                    TranslationController.LogEvent("app", "界面汉化钩子安装失败（脚本异常）");
             }
 
             /// <summary>
@@ -1654,7 +1660,42 @@ namespace Assistant.Controllers
                 { "Siren ELS Down", "警笛 ELS 降低" },
                 { "Siren ELS Up", "警笛 ELS 升高" },
                 { "Throw Gun", "扔枪" },
-                { "Transit Vehicle Door", "摆渡车辆车门" }
+                { "Transit Vehicle Door", "摆渡车辆车门" },
+                // 游戏内 Personal Assistant 菜单（按 I 打开）
+                { "Personal Assistant", "个人助理" },
+                { "Inventory", "背包" },
+                { "Open businesses", "打开企业" },
+                { "Open SanEats", "打开 SanEats" },
+                { "Open Property", "打开房产" },
+                { "Property Inventory", "房产库存" },
+                { "Vehicle Inventory", "车辆库存" },
+                { "Job Offers", "工作机会" },
+                { "Sport Games", "体育游戏" },
+                { "Phone directory", "电话簿" },
+                { "Premium shop", "高级商店" },
+                { "Friends", "好友" },
+                { "Use left & right arrows to navigate", "使用左右方向键切换" },
+                { "Open your inventory", "打开你的背包" },
+                // 第二页
+                { "Bank Accounts", "银行账户" },
+                { "Redeem a Medal Code", "兑换奖章代码" },
+                { "Buy Exterior Furniture Kit", "购买室外家具套装" },
+                { "Join Faction", "加入组织" },
+                { "Vehicles", "车辆" },
+                { "Character Details", "角色详情" },
+                { "Devices", "设备" },
+                { "Styles", "风格" },
+                // 第三页
+                { "Stats", "统计数据" },
+                { "Decorate House Exterior", "装饰房屋外观" },
+                { "Activity Rewards", "活动奖励" },
+                { "Help", "帮助" },
+                { "Rules", "规则" },
+                { "Settings", "设置" },
+                { "Change character", "更换角色" },
+                { "Cancel", "取消" },
+                // 动态页码：Page 1/3
+                { "__pageFormat", "第 {0}/{1} 页" }
             };
 
             private static readonly Dictionary<string, string> MapZhTw = new Dictionary<string, string>
@@ -1888,7 +1929,39 @@ namespace Assistant.Controllers
                 { "Siren ELS Down", "警笛 ELS 降低" },
                 { "Siren ELS Up", "警笛 ELS 升高" },
                 { "Throw Gun", "扔槍" },
-                { "Transit Vehicle Door", "接駁車輛車門" }
+                { "Transit Vehicle Door", "接駁車輛車門" },
+                // 遊戲內 Personal Assistant 選單（按 I 開啟）
+                { "Personal Assistant", "個人助理" },
+                { "Inventory", "背包" },
+                { "Open businesses", "開啟企業" },
+                { "Open SanEats", "開啟 SanEats" },
+                { "Open Property", "開啟房產" },
+                { "Property Inventory", "房產庫存" },
+                { "Vehicle Inventory", "車輛庫存" },
+                { "Job Offers", "工作機會" },
+                { "Sport Games", "體育遊戲" },
+                { "Phone directory", "電話簿" },
+                { "Premium shop", "進階商店" },
+                { "Friends", "好友" },
+                { "Use left & right arrows to navigate", "使用左右方向鍵切換" },
+                { "Open your inventory", "開啟你的背包" },
+                { "Bank Accounts", "銀行帳戶" },
+                { "Redeem a Medal Code", "兌換獎章代碼" },
+                { "Buy Exterior Furniture Kit", "購買室外傢俱套裝" },
+                { "Join Faction", "加入組織" },
+                { "Vehicles", "車輛" },
+                { "Character Details", "角色詳情" },
+                { "Devices", "裝置" },
+                { "Styles", "風格" },
+                { "Stats", "統計資料" },
+                { "Decorate House Exterior", "裝飾房屋外觀" },
+                { "Activity Rewards", "活動獎勵" },
+                { "Help", "說明" },
+                { "Rules", "規則" },
+                { "Settings", "設定" },
+                { "Change character", "更換角色" },
+                { "Cancel", "取消" },
+                { "__pageFormat", "第 {0}/{1} 頁" }
             };
 
             private static readonly Dictionary<string, string> MapEs = new Dictionary<string, string>
@@ -2122,7 +2195,39 @@ namespace Assistant.Controllers
                 { "Siren ELS Down", "Sirena ELS abajo" },
                 { "Siren ELS Up", "Sirena ELS arriba" },
                 { "Throw Gun", "Lanzar arma" },
-                { "Transit Vehicle Door", "Puerta de vehículo de tránsito" }
+                { "Transit Vehicle Door", "Puerta de vehículo de tránsito" },
+                // Menú Personal Assistant del juego (tecla I)
+                { "Personal Assistant", "Asistente personal" },
+                { "Inventory", "Inventario" },
+                { "Open businesses", "Abrir negocios" },
+                { "Open SanEats", "Abrir SanEats" },
+                { "Open Property", "Abrir propiedad" },
+                { "Property Inventory", "Inventario de propiedad" },
+                { "Vehicle Inventory", "Inventario de vehículos" },
+                { "Job Offers", "Ofertas de trabajo" },
+                { "Sport Games", "Juegos deportivos" },
+                { "Phone directory", "Directorio telefónico" },
+                { "Premium shop", "Tienda premium" },
+                { "Friends", "Amigos" },
+                { "Use left & right arrows to navigate", "Usa las flechas izquierda y derecha para navegar" },
+                { "Open your inventory", "Abre tu inventario" },
+                { "Bank Accounts", "Cuentas bancarias" },
+                { "Redeem a Medal Code", "Canjear un código de medalla" },
+                { "Buy Exterior Furniture Kit", "Comprar kit de muebles exteriores" },
+                { "Join Faction", "Unirse a facción" },
+                { "Vehicles", "Vehículos" },
+                { "Character Details", "Detalles del personaje" },
+                { "Devices", "Dispositivos" },
+                { "Styles", "Estilos" },
+                { "Stats", "Estadísticas" },
+                { "Decorate House Exterior", "Decorar exterior de la casa" },
+                { "Activity Rewards", "Recompensas de actividad" },
+                { "Help", "Ayuda" },
+                { "Rules", "Reglas" },
+                { "Settings", "Ajustes" },
+                { "Change character", "Cambiar personaje" },
+                { "Cancel", "Cancelar" },
+                { "__pageFormat", "Página {0}/{1}" }
             };
         }
     }
