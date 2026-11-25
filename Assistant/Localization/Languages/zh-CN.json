@@ -84,6 +84,7 @@
   "UpdateAvailable": "GitHub 上已有新版本的聊天日志解析器。\n\n已安装版本：{0}\n可用版本：{1}\n\n是否立即访问发布页面？",
   "UpdateAvailableTitle": "发现新版本",
   "VersionInfo": "{0}{1}",
+  "UpdateBanner": "新版本 {0}",
   "Warning": "警告",
   "SettingsTitle": "程序设置",
   "SettingsTitleBar": "标题栏",

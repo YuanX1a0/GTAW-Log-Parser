@@ -84,6 +84,7 @@
   "UpdateAvailable": "Ya hay una nueva versión del parser de registro de chat disponible en GitHub.\n\nVersión instalada: {0}\nVersión disponible: {1}\n\n¿Deseas visitar la página de versiones ahora?",
   "UpdateAvailableTitle": "Actualización disponible",
   "VersionInfo": "{0}{1}",
+  "UpdateBanner": "v{0} disponible",
   "Warning": "Advertencia",
   "SettingsTitle": "Configuración del programa",
   "SettingsTitleBar": "Barra de título",

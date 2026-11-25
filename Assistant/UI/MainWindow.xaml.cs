@@ -28,6 +28,10 @@ namespace Assistant.UI
         private System.Windows.Threading.DispatcherTimer _autoParseTimer;
         private string _lastAutoParsedLog = string.Empty;
 
+        // Latest GitHub release newer than this build, null until the
+        // background check finds one.
+        private UpdateController.UpdateInfo _latestUpdate;
+
         // Holds the full parsed log so the on-screen text box can be truncated
         // for display while "Save" still writes the complete contents.
         private string _lastParsedFull = string.Empty;
@@ -91,6 +95,7 @@ namespace Assistant.UI
             InitializeRealtimeLog();
 
             BackupController.Initialize();
+            StartUpdateCheck();
         }
 
         // ================================================================
@@ -201,6 +206,12 @@ namespace Assistant.UI
         // While true, translation control change events are ignored so the
         // initial population of the settings page does not write partial values.
         private bool _loadingTranslationSettings;
+
+        // While true, the background model-list refresh is rewriting a model
+        // combo, so its programmatic SelectionChanged/TextChanged events must
+        // not be treated as the user switching models (which would log a bogus
+        // "switched model" line and persist a selection nobody made).
+        private bool _updatingModelList;
 
         /// <summary>
         /// Toggles the "most translated words" list on the overview page.
@@ -616,6 +627,67 @@ namespace Assistant.UI
             SpecialNounsEnBox.ToolTip = Strings.SpecialNounsEn;
             SpecialNounsZhCnBox.ToolTip = Strings.SpecialNounsZhCn;
             SpecialNounsZhTwBox.ToolTip = Strings.SpecialNounsZhTw;
+            RefreshUpdateBanner();
+        }
+
+        // ================================================================
+        //  Version update reminder
+        // ================================================================
+
+        /// <summary>
+        /// Starts the background GitHub release check.
+        /// </summary>
+        private void StartUpdateCheck()
+        {
+            UpdateController.StartWatching(ShowUpdateAvailable);
+        }
+
+        /// <summary>
+        /// Called on the UI thread when a newer release exists: shows the
+        /// persistent banner in the top-left corner and, once per version,
+        /// a popup offering to open the release page.
+        /// </summary>
+        private void ShowUpdateAvailable(UpdateController.UpdateInfo info)
+        {
+            if (info == null)
+                return;
+
+            _latestUpdate = info;
+            RefreshUpdateBanner();
+
+            if (Properties.Settings.Default.DisableInformationPopups)
+                return;
+            if (!UpdateController.ShouldNotify(info.Version))
+                return;
+
+            UpdateController.MarkNotified(info.Version);
+            MessageBoxResult result = MessageBox.Show(
+                string.Format(Strings.UpdateAvailable, AppController.Version, info.Version),
+                Strings.UpdateAvailableTitle,
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+            if (result == MessageBoxResult.Yes)
+                UpdateController.OpenReleasePage(info.Url);
+        }
+
+        /// <summary>
+        /// Shows or hides the top-left update banner and localizes its text.
+        /// </summary>
+        private void RefreshUpdateBanner()
+        {
+            if (_latestUpdate == null)
+            {
+                UpdateBanner.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            UpdateBannerText.Text = string.Format(Strings.UpdateBanner, _latestUpdate.Version);
+            UpdateBanner.Visibility = Visibility.Visible;
+        }
+
+        private void UpdateBanner_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateController.OpenReleasePage(_latestUpdate == null ? UpdateController.ReleasesPage : _latestUpdate.Url);
         }
 
         /// <summary>
@@ -1000,7 +1072,7 @@ namespace Assistant.UI
         private void SubscribeImmediateSettings()
         {
             RoutedEventHandler saveRouted = delegate { if (!_loadingTranslationSettings) SaveTranslationSettings(); };
-            SelectionChangedEventHandler saveSelection = delegate { if (!_loadingTranslationSettings) SaveTranslationSettings(); };
+            SelectionChangedEventHandler saveSelection = delegate { if (!_loadingTranslationSettings && !_updatingModelList) SaveTranslationSettings(); };
             TextChangedEventHandler saveText = delegate { if (!_loadingTranslationSettings) SaveTranslationSettings(); };
 
             TranslationEnabled.Checked += saveRouted;
@@ -1224,13 +1296,24 @@ namespace Assistant.UI
                                 merged.Add(name);
                         }
                         string current = combo.Text;
-                        combo.Items.Clear();
-                        foreach (string model in merged)
-                            combo.Items.Add(model);
-                        if (!string.IsNullOrEmpty(current) && merged.Contains(current))
-                            combo.Text = current;
-                        else
-                            combo.SelectedIndex = 0;
+                        _updatingModelList = true;
+                        try
+                        {
+                            combo.Items.Clear();
+                            foreach (string model in merged)
+                                combo.Items.Add(model);
+                            if (!string.IsNullOrEmpty(current) && merged.Contains(current))
+                                combo.Text = current;
+                            else if (combo.IsEditable && !string.IsNullOrEmpty(current))
+                                // 可编辑下拉框保留玩家手填的模型名，不要强行改成列表第一项
+                                combo.Text = current;
+                            else
+                                combo.SelectedIndex = 0;
+                        }
+                        finally
+                        {
+                            _updatingModelList = false;
+                        }
                         TranslationController.LogEvent("翻译", "模型列表已更新（" + provider + "，" + request.Endpoint + "）：" + merged.Count + " 个模型");
                     }
                     catch (Exception ex)
@@ -2082,14 +2165,14 @@ namespace Assistant.UI
         private void DeepSeekSpeedList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             UpdateSpeedDrivenModel(DeepSeekSpeedList, DeepSeekModelList, "deepseek-v4-flash", "deepseek-v4-pro");
-            if (!_loadingTranslationSettings)
+            if (!_loadingTranslationSettings && !_updatingModelList)
                 SaveTranslationSettings();
         }
 
         private void SendSpeedList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             UpdateSpeedDrivenModel(SendSpeedList, SendModelList, "deepseek-v4-flash", "deepseek-v4-pro");
-            if (!_loadingTranslationSettings)
+            if (!_loadingTranslationSettings && !_updatingModelList)
                 SaveTranslationSettings();
         }
 
@@ -2127,7 +2210,7 @@ namespace Assistant.UI
         /// </summary>
         private void ModelSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_loadingTranslationSettings)
+            if (_loadingTranslationSettings || _updatingModelList)
                 return;
 
             ComboBox combo = sender as ComboBox;
@@ -2167,7 +2250,7 @@ namespace Assistant.UI
 
         private void ModelTextChanged(object sender, TextChangedEventArgs e)
         {
-            if (_loadingTranslationSettings)
+            if (_loadingTranslationSettings || _updatingModelList)
                 return;
             SaveTranslationSettings();
         }

@@ -84,6 +84,7 @@
   "UpdateAvailable": "GitHub 上已有新版本的聊天記錄解析器。\n\n已安裝版本：{0}\n可用版本：{1}\n\n是否立即前往發布頁面？",
   "UpdateAvailableTitle": "發現新版本",
   "VersionInfo": "{0}{1}",
+  "UpdateBanner": "新版本 {0}",
   "Warning": "警告",
   "SettingsTitle": "程式設定",
   "SettingsTitleBar": "標題列",

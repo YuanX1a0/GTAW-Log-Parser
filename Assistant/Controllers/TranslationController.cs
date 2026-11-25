@@ -993,7 +993,7 @@ namespace Assistant.Controllers
                 {
                     lock (CacheLock)
                         ++_cacheHits;
-                    return cached;
+                    return StripEnvelopeTags(cached);
                 }
                 string prefix = cacheKey.Substring(0, cacheKey.Length - normalizedText.Length);
                 string fuzzy = GetFuzzyCachedTranslation(prefix, normalizedText);
@@ -1005,7 +1005,7 @@ namespace Assistant.Controllers
                         ++_fuzzyCacheHits;
                     }
                     LogEvent("翻译", "缓存模糊命中: " + Short(text));
-                    return fuzzy;
+                    return StripEnvelopeTags(fuzzy);
                 }
             }
 
@@ -1023,6 +1023,9 @@ namespace Assistant.Controllers
                 result = TranslateWithZoom(workText, targetLanguage, sourceLanguage, apiKey);
             else
                 result = Translate(workText, targetLanguage, sourceLanguage);
+
+            // Never let the provider's prompt-envelope tags leak into the chat.
+            result = StripEnvelopeTags(result);
 
             // Put the protected special nouns back as their translations.
             if (snPlaceholders != null && snPlaceholders.Count > 0)
@@ -1056,7 +1059,7 @@ namespace Assistant.Controllers
                 {
                     lock (CacheLock)
                         ++_cacheHits;
-                    return cached;
+                    return StripEnvelopeTags(cached);
                 }
                 string prefix = cacheKey.Substring(0, cacheKey.Length - normalizedText.Length);
                 string fuzzy = GetFuzzyCachedTranslation(prefix, normalizedText);
@@ -1068,7 +1071,7 @@ namespace Assistant.Controllers
                         ++_fuzzyCacheHits;
                     }
                     LogEvent("翻译", "缓存模糊命中: " + Short(text));
-                    return fuzzy;
+                    return StripEnvelopeTags(fuzzy);
                 }
             }
 
@@ -1973,6 +1976,22 @@ namespace Assistant.Controllers
                 case "ru": return "RU";
                 default: return null;
             }
+        }
+
+        /// <summary>
+        /// Some providers echo the XML-style envelope used when the system role
+        /// is rejected (the prompt merges instructions and text with
+        /// &lt;instructions&gt; / &lt;text&gt; markers). A model occasionally
+        /// appends a stray "&lt;/text&gt;" to its answer, which then leaks into
+        /// the chat. Strip any such envelope tag from the translated text.
+        /// </summary>
+        private static string StripEnvelopeTags(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            string cleaned = Regex.Replace(text, @"<\s*/?\s*(?:text|instructions)\s*>", string.Empty, RegexOptions.IgnoreCase);
+            return cleaned == text ? text : cleaned.Trim();
         }
 
         /// <summary>

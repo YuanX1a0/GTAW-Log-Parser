@@ -36,6 +36,8 @@ namespace Assistant.Controllers
         private static bool wasFiveMRunning;
         private static DateTime sessionStartedAt;
         private static List<string> previousVisibleLines = new List<string>();
+        private static string lastLoopError;
+        private static DateTime lastLoopErrorAt;
         private static readonly Regex TimestampPrefix = new Regex(@"^\[(?<time>\d{1,2}:\d{2}:\d{2})\]\s+");
 
         private static readonly object TranslationLock = new object();
@@ -149,9 +151,10 @@ namespace Assistant.Controllers
                         {
                             ProcessHotkeyToasts();
                         }
-                        catch
+                        catch (Exception ex)
                         {
                             // NUI may be reloading; the flag will be read on the next poll
+                            LogLoopError("热键", "处理异常: " + ex.Message);
                         }
                         if (Properties.Settings.Default.TranslationEnabled)
                         {
@@ -159,9 +162,10 @@ namespace Assistant.Controllers
                             {
                                 ProcessTranslations();
                             }
-                            catch
+                            catch (Exception ex)
                             {
                                 // Translation issues must never break chat capture
+                                LogLoopError("翻译", "待翻译处理异常: " + ex.Message);
                             }
                         }
                         else
@@ -170,24 +174,40 @@ namespace Assistant.Controllers
                             {
                                 Reader.UninstallTranslationHookIfNeeded();
                             }
-                            catch
+                            catch (Exception ex)
                             {
                                 // NUI may be reloading; retry on the next poll
+                                LogLoopError("翻译", "卸载翻译钩子异常: " + ex.Message);
                             }
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
                     lock (SyncRoot)
                     {
                         Reader.Close();
                     }
                     // The HUD can reload while a server is connecting. Keep trying quietly.
+                    LogLoopError("game", "聊天捕获异常: " + ex.Message);
                 }
 
                 Thread.Sleep(PollIntervalMilliseconds);
             }
+        }
+
+        /// <summary>
+        /// Logs a background-loop failure while suppressing identical repeats
+        /// (the poll runs twice a second, so an unrecoverable error would
+        /// otherwise flood the realtime log).
+        /// </summary>
+        private static void LogLoopError(string category, string message)
+        {
+            if (message == lastLoopError && (DateTime.Now - lastLoopErrorAt).TotalSeconds < 15)
+                return;
+            lastLoopError = message;
+            lastLoopErrorAt = DateTime.Now;
+            TranslationController.LogEvent(category, message);
         }
 
         /// <summary>
@@ -216,6 +236,8 @@ namespace Assistant.Controllers
         private static void ProcessTranslations()
         {
             List<PendingTranslation> pending = Reader.GetPendingTranslations();
+            if (pending.Count > 0)
+                TranslationController.LogEvent("翻译", "收到待翻译 " + pending.Count + " 条");
             lock (TranslationLock)
             {
                 foreach (PendingTranslation item in pending)
@@ -599,13 +621,19 @@ namespace Assistant.Controllers
             private ClientWebSocket socket;
             private int contextId;
             private int requestId;
+            // Unique per isolated-world connection: old worlds compare it with the
+            // DOM attribute and uninstall themselves when it changes.
+            private string contextOwnerId;
             private bool _translationHookInstalled;
             private bool _lastAutoTranslateState;
 
             public List<string> GetChatLines()
             {
                 EnsureConnected();
-                const string expression = "JSON.stringify(Array.from(document.querySelectorAll('.chat__messages > li'), el => { const text = (el.innerText || '').replace(/\\s+/g, ' ').trim(); if (!text) return ''; const nodes = [el].concat(Array.from(el.querySelectorAll('*'))); let timestamp = ''; for (const node of nodes) { for (const attribute of Array.from(node.attributes || [])) { const match = String(attribute.value).match(/\\b\\d{1,2}:\\d{2}:\\d{2}\\b/); if (match) { timestamp = match[0]; break; } } if (!timestamp) { const match = String(getComputedStyle(node, '::before').content || '').match(/\\b\\d{1,2}:\\d{2}:\\d{2}\\b/); if (match) timestamp = match[0]; } if (timestamp) break; } return (timestamp ? '[' + timestamp + '] ' : '') + text; }).filter(Boolean))";
+                // Chat design v3 keeps the visible list in .chat__view and mirrors
+                // every line into the hidden .chat__messages feed (which has no
+                // injected translations), so prefer the feed for log capture.
+                const string expression = "(function(){ var feed = document.querySelector('.chat__messages'); var view = document.querySelector('.chat__view'); var list = (feed && feed.children.length) ? feed : (view || feed); if (!list) return '[]'; return JSON.stringify(Array.from(list.children, el => { const text = (el.innerText || '').replace(/\\s+/g, ' ').trim(); if (!text) return ''; const nodes = [el].concat(Array.from(el.querySelectorAll('*'))); let timestamp = ''; for (const node of nodes) { for (const attribute of Array.from(node.attributes || [])) { const match = String(attribute.value).match(/\\b\\d{1,2}:\\d{2}:\\d{2}\\b/); if (match) { timestamp = match[0]; break; } } if (!timestamp) { const match = String(getComputedStyle(node, '::before').content || '').match(/\\b\\d{1,2}:\\d{2}:\\d{2}\\b/); if (match) timestamp = match[0]; } if (timestamp) break; } return (timestamp ? '[' + timestamp + '] ' : '') + text; }).filter(Boolean)); })()";
                 IDictionary<string, object> result = Request("Runtime.evaluate", new Dictionary<string, object>
                 {
                     { "expression", expression },
@@ -630,33 +658,49 @@ namespace Assistant.Controllers
                 string toastOff = serializer.Serialize(toastAutoOff ?? string.Empty);
                 string toastBulk = serializer.Serialize(toastBulkDone ?? string.Empty);
                 string toastFlag = showToasts ? "true" : "false";
-                string hook = "(function(){ if(window.__gtawTranslatorVersion === 12){ window.__gtawBulkHotkey = " + bulkHotkey + "; window.__gtawAutoHotkey = " + autoHotkey + "; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastAutoOn = " + toastOn + "; window.__gtawToastAutoOff = " + toastOff + "; window.__gtawToastBulk = " + toastBulk + "; return; } window.__gtawTranslatorVersion = 12; "
+                // Every connection gets its own isolated world, and old worlds
+                // survive as long as the game page lives. This owner id is written
+                // to the DOM so any hook installed by a previous connection notices
+                // it lost ownership and removes itself instead of piling up
+                // orphaned placeholders ("...").
+                string ownerJson = serializer.Serialize(contextOwnerId ?? string.Empty);
+                string hook = "(function(){ if(window.__gtawTranslatorVersion === 14){ document.documentElement.setAttribute('data-gtaw-owner', " + ownerJson + "); window.__gtawBulkHotkey = " + bulkHotkey + "; window.__gtawAutoHotkey = " + autoHotkey + "; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastAutoOn = " + toastOn + "; window.__gtawToastAutoOff = " + toastOff + "; window.__gtawToastBulk = " + toastBulk + "; return; } window.__gtawTranslatorVersion = 14; "
+                    + "window.__gtawChatList = function(){ var v = document.querySelector('.chat__view'); if(v && v.offsetParent !== null) return v; return document.querySelector('.chat__messages') || v; }; "
+                    + "window.__gtawChatItems = function(){ var l = window.__gtawChatList(); return l ? l.children : []; }; "
+                    + "window.__gtawChatItemFrom = function(node){ var l = window.__gtawChatList(); if(!l || !node) return null; var el = (node.nodeType === 1) ? node : node.parentNode; while(el && el !== l){ if(el.parentNode === l && el.tagName === 'LI') return el; el = el.parentNode; } return null; }; "
+                    + "window.__gtawFindTid = function(id){ var items = window.__gtawChatItems(); for(var i = 0; i < items.length; i++){ var li = items[i]; if(li.getAttribute('data-gtaw-tid') === id) return { li: li, el: null }; var ds = li.querySelectorAll('[data-gtaw-tid]'); for(var k = 0; k < ds.length; k++){ if(ds[k].getAttribute('data-gtaw-tid') === id) return { li: li, el: ds[k] }; } } return null; }; "
                     + "window.__gtawBulkHotkey = " + bulkHotkey + "; window.__gtawAutoHotkey = " + autoHotkey + "; window.__gtawAutoTranslate = " + autoInitial + "; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastAutoOn = " + toastOn + "; window.__gtawToastAutoOff = " + toastOff + "; window.__gtawToastBulk = " + toastBulk + "; "
+                    + "document.documentElement.setAttribute('data-gtaw-owner', " + ownerJson + "); "
+                    + "function gtawDropOwnership(){ if(window.__gtawTranslatorHandler){ document.removeEventListener('click', window.__gtawTranslatorHandler, true); window.__gtawTranslatorHandler = null; } if(window.__gtawBulkHandler){ document.removeEventListener('keydown', window.__gtawBulkHandler, true); window.__gtawBulkHandler = null; } if(window.__gtawAutoHandler){ document.removeEventListener('keydown', window.__gtawAutoHandler, true); window.__gtawAutoHandler = null; } if(window.__gtawAutoObs){ window.__gtawAutoObs.disconnect(); window.__gtawAutoObs = null; } if(window.__gtawAutoRetry){ clearInterval(window.__gtawAutoRetry); window.__gtawAutoRetry = null; } if(window.__gtawLeaseTimer){ clearInterval(window.__gtawLeaseTimer); window.__gtawLeaseTimer = null; } if(window.__gtawSweepTimer){ clearInterval(window.__gtawSweepTimer); window.__gtawSweepTimer = null; } var pend = window.__gtawPendingTranslations || []; for(var i = 0; i < pend.length; i++){ var pid = pend[i] && pend[i].id; if(!pid) continue; var ds = document.querySelectorAll('[data-gtaw-tid]'); for(var k = 0; k < ds.length; k++){ if(ds[k].getAttribute('data-gtaw-tid') === pid && ds[k].parentNode){ ds[k].parentNode.removeChild(ds[k]); } } } window.__gtawPendingTranslations = []; window.__gtawAutoTranslate = false; window.__gtawMode = ''; delete window.__gtawTranslatorVersion; } "
+                    + "window.__gtawLeaseTimer = setInterval(function(){ if(document.documentElement.getAttribute('data-gtaw-owner') !== " + ownerJson + "){ gtawDropOwnership(); } }, 2000); "
+                    // Sweep placeholders nobody resolved (left by hooks of older
+                    // connections): ids carry the enqueue timestamp, so anything
+                    // still showing "..." after 45s is orphaned.
+                    + "window.__gtawSweepTimer = setInterval(function(){ var now = Date.now(); var ds = document.querySelectorAll('[data-gtaw-tid]'); for(var i = 0; i < ds.length; i++){ var id = ds[i].getAttribute('data-gtaw-tid') || ''; var m = /gtaw[a-z]?-(\\d{13})/.exec(id); if(m && (now - parseInt(m[1], 10)) > 45000 && (ds[i].innerText || '').trim() === '...'){ if(ds[i].parentNode){ ds[i].parentNode.removeChild(ds[i]); } } } }, 5000); "
                     + "if(window.__gtawTranslatorHandler){ document.removeEventListener('click', window.__gtawTranslatorHandler, true); } "
                     + "if(window.__gtawBulkHandler){ document.removeEventListener('keydown', window.__gtawBulkHandler, true); } "
                     + "if(window.__gtawAutoHandler){ document.removeEventListener('keydown', window.__gtawAutoHandler, true); } "
                     + "if(window.__gtawAutoObs){ window.__gtawAutoObs.disconnect(); window.__gtawAutoObs = null; } "
                     + "if(window.__gtawAutoRetry){ clearInterval(window.__gtawAutoRetry); } "
-                    + "document.querySelectorAll('.chat__messages > li [data-gtaw-tid]').forEach(function(el){ if(el.parentNode){ el.parentNode.removeChild(el); } }); "
-                    + "document.querySelectorAll('.chat__messages > li[data-gtaw-tid]').forEach(function(li){ if(li.__gtawOriginalHtml){ li.innerHTML = li.__gtawOriginalHtml; } li.removeAttribute('data-gtaw-tid'); delete li.__gtawOriginalHtml; delete li.__gtawSegs; delete li.__gtawTranslated; delete li.__gtawPendingId; }); "
+                    + "var __cleanItems = window.__gtawChatItems ? window.__gtawChatItems() : document.querySelectorAll('.chat__messages > li'); for(var __ci = 0; __ci < __cleanItems.length; __ci++){ var __li = __cleanItems[__ci]; var __divs = __li.querySelectorAll('[data-gtaw-tid]'); for(var __di = 0; __di < __divs.length; __di++){ if(__divs[__di].parentNode){ __divs[__di].parentNode.removeChild(__divs[__di]); } } if(__li.__gtawOriginalHtml){ __li.innerHTML = __li.__gtawOriginalHtml; } __li.removeAttribute('data-gtaw-tid'); delete __li.__gtawOriginalHtml; delete __li.__gtawSegs; delete __li.__gtawTranslated; delete __li.__gtawPendingId; } "
                     + "window.__gtawPendingTranslations = []; "
                     + "function showToast(msg){ if(window.__gtawShowToasts === false) return; var t = document.getElementById('gtaw-toast'); if(!t){ t = document.createElement('div'); t.id = 'gtaw-toast'; t.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(20,20,24,0.9);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:6px 14px;font-family:Segoe UI,Arial,sans-serif;font-size:12px;z-index:20000;pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,0.5);white-space:nowrap;'; document.body.appendChild(t); } t.textContent = msg; t.style.display = 'block'; clearTimeout(t.__gtawToastTimer); t.__gtawToastTimer = setTimeout(function(){ t.style.display = 'none'; }, 2500); } window.__gtawToast = showToast; "
                     + "window.__gtawMode = '" + mode + "'; "
                     + "function collect(li){ var segs = []; function styleOf(el){ var cs = getComputedStyle(el); return [cs.color, cs.fontFamily, cs.fontSize, cs.fontStyle, cs.fontWeight]; } function walk(node, el){ for(var i = 0; i < node.childNodes.length; i++){ var c = node.childNodes[i]; if(c.nodeType === 3){ var t = (c.textContent || '').replace(/\\s+/g, ' ').trim(); if(t) segs.push({ t: t, s: styleOf(el) }); } else if(c.nodeType === 1){ if(c.children.length){ walk(c, c); } else { var t2 = (c.innerText || c.textContent || '').replace(/\\s+/g, ' ').trim(); if(t2) segs.push({ t: t2, s: styleOf(c) }); } } } } walk(li, li); return segs; } "
                     + "function enqueue(li, rid){ if(window.__gtawMode === 'replace'){ if(li.__gtawTranslated || li.__gtawPendingId) return; li.__gtawOriginalHtml = li.innerHTML; li.__gtawSegs = collect(li); li.__gtawPendingId = rid; li.setAttribute('data-gtaw-tid', rid); li.textContent = '...'; window.__gtawPendingTranslations.push({ id: rid, segs: li.__gtawSegs }); return; } if(li.__gtawPendingId || li.querySelector('[data-gtaw-tid]')) return; li.__gtawSegs = collect(li); li.__gtawPendingId = rid; var div = document.createElement('div'); div.setAttribute('data-gtaw-tid', rid); div.style.cssText = 'margin-top:2px;white-space:pre-wrap;'; var bs = li.__gtawSegs.length ? li.__gtawSegs[li.__gtawSegs.length - 1].s : null; var ph = document.createElement('span'); if(bs){ ph.style.color = bs[0]; ph.style.fontFamily = bs[1]; ph.style.fontSize = bs[2]; ph.style.fontStyle = bs[3]; ph.style.fontWeight = bs[4]; } ph.textContent = '...'; div.appendChild(ph); li.appendChild(div); window.__gtawPendingTranslations.push({ id: rid, segs: li.__gtawSegs }); } "
-                    + "function processAdded(muts){ var items = []; for(var m = 0; m < muts.length; m++){ var added = muts[m].addedNodes; for(var i = 0; i < added.length; i++){ var n = added[i]; if(n.nodeType === 1 && n.matches && n.matches('.chat__messages > li')) items.push(n); } } if(!items.length) return; items.forEach(function(li){ if(!li.__gtawPendingId && !li.querySelector('[data-gtaw-tid]')){ var rid = 'gtawa-' + Date.now() + '-' + Math.random().toString(36).substr(2,6); enqueue(li, rid); } }); } "
-                    + "function ensureAutoObserver(){ if(window.__gtawAutoTranslate){ if(!window.__gtawAutoObs){ var container = document.querySelector('.chat__messages'); if(!container) return; window.__gtawAutoObs = new MutationObserver(function(muts){ setTimeout(function(){ processAdded(muts); }, 50); }); window.__gtawAutoObs.observe(container, { childList: true }); } } else { if(window.__gtawAutoObs){ window.__gtawAutoObs.disconnect(); window.__gtawAutoObs = null; } } } "
+                    + "function processAdded(muts){ var items = []; for(var m = 0; m < muts.length; m++){ var added = muts[m].addedNodes; for(var i = 0; i < added.length; i++){ var n = added[i]; if(n.nodeType === 1 && n.tagName === 'LI' && n.parentNode === window.__gtawChatList()) items.push(n); } } if(!items.length) return; items.forEach(function(li){ if(!li.__gtawPendingId && !li.querySelector('[data-gtaw-tid]')){ var rid = 'gtawa-' + Date.now() + '-' + Math.random().toString(36).substr(2,6); enqueue(li, rid); } }); } "
+                    + "function ensureAutoObserver(){ if(window.__gtawAutoTranslate){ var container = window.__gtawChatList(); if(!container) return; if(window.__gtawAutoObs && window.__gtawAutoObsTarget === container) return; if(window.__gtawAutoObs){ window.__gtawAutoObs.disconnect(); } window.__gtawAutoObsTarget = container; window.__gtawAutoObs = new MutationObserver(function(muts){ setTimeout(function(){ processAdded(muts); }, 50); }); window.__gtawAutoObs.observe(container, { childList: true }); } else { if(window.__gtawAutoObs){ window.__gtawAutoObs.disconnect(); window.__gtawAutoObs = null; } window.__gtawAutoObsTarget = null; } } "
                     + "function toggleAuto(v){ if(typeof v !== 'undefined'){ window.__gtawAutoTranslate = !!v; } else { window.__gtawAutoTranslate = !window.__gtawAutoTranslate; } ensureAutoObserver(); } window.__gtawToggleAuto = toggleAuto; "
                     + "var autoHandler = function(e){ var hot = window.__gtawAutoHotkey || 'Ctrl+Shift+F9'; var parts = hot.split('+'); var keyName = (parts.pop() || 'F9').toUpperCase(); var needsCtrl = false, needsShift = false; for(var i = 0; i < parts.length; i++){ var p = parts[i].trim(); if(p === 'Ctrl') needsCtrl = true; else if(p === 'Shift') needsShift = true; } var pressed = (e.key || '').toUpperCase(); if(pressed !== keyName) return; if(needsCtrl !== (e.ctrlKey || e.metaKey)) return; if(needsShift !== e.shiftKey) return; if(e.repeat) return; toggleAuto(); showToast(window.__gtawAutoTranslate ? window.__gtawToastAutoOn : window.__gtawToastAutoOff); window.__gtawToastWindows = window.__gtawAutoTranslate ? 'auto:on' : 'auto:off'; }; "
                     + "window.__gtawAutoHandler = autoHandler; document.addEventListener('keydown', autoHandler, true); "
-                    + "var handler = function(e){ var li = (e.target && e.target.closest) ? e.target.closest('.chat__messages > li') : null; if(!li) return; var text = (li.innerText || '').replace(/\\s+/g, ' ').trim(); if(!text) return; "
+                    + "var handler = function(e){ var li = window.__gtawChatItemFrom(e.target); if(!li) return; var text = (li.innerText || '').replace(/\\s+/g, ' ').trim(); if(!text) return; "
                     + "if(window.__gtawMode === 'replace'){ if(li.__gtawTranslated){ li.innerHTML = li.__gtawOriginalHtml; li.__gtawTranslated = false; return; } if(li.__gtawPendingId){ window.__gtawPendingTranslations.push({ id: li.__gtawPendingId, segs: li.__gtawSegs }); return; } var rid = 'gtaw-' + Date.now() + '-' + Math.random().toString(36).substr(2,6); enqueue(li, rid); return; } "
                     + "var existing = li.querySelector('[data-gtaw-tid]'); if(existing){ if(existing.textContent && existing.textContent !== '...'){ existing.style.display = existing.style.display === 'none' ? '' : 'none'; } else { window.__gtawPendingTranslations.push({ id: existing.getAttribute('data-gtaw-tid'), segs: li.__gtawSegs }); } return; } "
                     + "var id = 'gtaw-' + Date.now() + '-' + Math.random().toString(36).substr(2,6); enqueue(li, id); }; "
                     + "window.__gtawTranslatorHandler = handler; document.addEventListener('click', handler, true); "
-                    + "var bulkHandler = function(e){ var hot = window.__gtawBulkHotkey || 'Ctrl+F9'; var ctrl = hot.indexOf('Ctrl') === 0; var keyName = (hot.split('+').pop() || 'F9').toUpperCase(); var pressed = (e.key || '').toUpperCase(); if(pressed !== keyName) return; if(ctrl !== (e.ctrlKey || e.metaKey)) return; if(e.repeat) return; var lis = document.querySelectorAll('.chat__messages > li'); var start = Math.max(0, lis.length - 10); for(var i = start; i < lis.length; i++){ var li = lis[i]; var txt = (li.innerText || '').replace(/\\s+/g, ' ').trim(); if(!txt) continue; if(li.__gtawPendingId || li.querySelector('[data-gtaw-tid]')) continue; var rid = 'gtawb-' + Date.now() + '-' + i + '-' + Math.random().toString(36).substr(2,6); enqueue(li, rid); } showToast(window.__gtawToastBulk); window.__gtawToastWindows = 'bulk'; }; "
+                    + "var bulkHandler = function(e){ var hot = window.__gtawBulkHotkey || 'Ctrl+F9'; var ctrl = hot.indexOf('Ctrl') === 0; var keyName = (hot.split('+').pop() || 'F9').toUpperCase(); var pressed = (e.key || '').toUpperCase(); if(pressed !== keyName) return; if(ctrl !== (e.ctrlKey || e.metaKey)) return; if(e.repeat) return; var lis = window.__gtawChatItems(); var start = Math.max(0, lis.length - 10); for(var i = start; i < lis.length; i++){ var li = lis[i]; var txt = (li.innerText || '').replace(/\\s+/g, ' ').trim(); if(!txt) continue; if(li.__gtawPendingId || li.querySelector('[data-gtaw-tid]')) continue; var rid = 'gtawb-' + Date.now() + '-' + i + '-' + Math.random().toString(36).substr(2,6); enqueue(li, rid); } showToast(window.__gtawToastBulk); window.__gtawToastWindows = 'bulk'; }; "
                     + "window.__gtawBulkHandler = bulkHandler; document.addEventListener('keydown', bulkHandler, true); "
-                    + "ensureAutoObserver(); window.__gtawAutoRetry = setInterval(function(){ if(window.__gtawAutoTranslate && !window.__gtawAutoObs){ ensureAutoObserver(); } }, 2000); })();";
+                    + "ensureAutoObserver(); window.__gtawAutoRetry = setInterval(function(){ if(!window.__gtawAutoTranslate) return; var cur = window.__gtawChatList(); if(!window.__gtawAutoObs || (cur && window.__gtawAutoObsTarget !== cur)){ if(window.__gtawAutoObs){ window.__gtawAutoObs.disconnect(); window.__gtawAutoObs = null; } ensureAutoObserver(); } }, 2000); })();";
                 IDictionary<string, object> hookResult = Request("Runtime.evaluate", new Dictionary<string, object>
                 {
                     { "expression", hook },
@@ -750,14 +794,17 @@ namespace Assistant.Controllers
                     return;
 
                 EnsureConnected();
-                const string uninstallExpression = "if(window.__gtawTranslatorHandler){ document.removeEventListener('click', window.__gtawTranslatorHandler, true); } "
+                string cleanupOwnerJson = serializer.Serialize(contextOwnerId ?? string.Empty);
+                string uninstallExpression = "if(window.__gtawTranslatorHandler){ document.removeEventListener('click', window.__gtawTranslatorHandler, true); } "
                     + "if(window.__gtawBulkHandler){ document.removeEventListener('keydown', window.__gtawBulkHandler, true); } "
                     + "if(window.__gtawAutoHandler){ document.removeEventListener('keydown', window.__gtawAutoHandler, true); } "
                     + "if(window.__gtawAutoObs){ window.__gtawAutoObs.disconnect(); window.__gtawAutoObs = null; } "
                     + "if(window.__gtawAutoRetry){ clearInterval(window.__gtawAutoRetry); } "
+                    + "if(window.__gtawLeaseTimer){ clearInterval(window.__gtawLeaseTimer); window.__gtawLeaseTimer = null; } "
+                    + "if(window.__gtawSweepTimer){ clearInterval(window.__gtawSweepTimer); window.__gtawSweepTimer = null; } "
+                    + "if(document.documentElement.getAttribute('data-gtaw-owner') === " + cleanupOwnerJson + "){ document.documentElement.removeAttribute('data-gtaw-owner'); } "
                     + "delete window.__gtawTranslatorHandler; delete window.__gtawBulkHandler; delete window.__gtawAutoHandler; delete window.__gtawToggleAuto; delete window.__gtawPendingTranslations; delete window.__gtawTranslatorVersion; delete window.__gtawMode; delete window.__gtawBulkHotkey; delete window.__gtawAutoHotkey; delete window.__gtawAutoTranslate; "
-                    + "document.querySelectorAll('.chat__messages > li [data-gtaw-tid]').forEach(function(el){ if(el.parentNode){ el.parentNode.removeChild(el); } }); "
-                    + "document.querySelectorAll('.chat__messages > li[data-gtaw-tid]').forEach(function(li){ if(li.__gtawOriginalHtml){ li.innerHTML = li.__gtawOriginalHtml; } li.removeAttribute('data-gtaw-tid'); delete li.__gtawOriginalHtml; delete li.__gtawSegs; delete li.__gtawTranslated; delete li.__gtawPendingId; });";
+                    + "var __cleanItems = window.__gtawChatItems ? window.__gtawChatItems() : document.querySelectorAll('.chat__messages > li'); for(var __ci = 0; __ci < __cleanItems.length; __ci++){ var __li = __cleanItems[__ci]; var __divs = __li.querySelectorAll('[data-gtaw-tid]'); for(var __di = 0; __di < __divs.length; __di++){ if(__divs[__di].parentNode){ __divs[__di].parentNode.removeChild(__divs[__di]); } } if(__li.__gtawOriginalHtml){ __li.innerHTML = __li.__gtawOriginalHtml; } __li.removeAttribute('data-gtaw-tid'); delete __li.__gtawOriginalHtml; delete __li.__gtawSegs; delete __li.__gtawTranslated; delete __li.__gtawPendingId; }";
                 Request("Runtime.evaluate", new Dictionary<string, object>
                 {
                     { "expression", uninstallExpression },
@@ -843,6 +890,8 @@ namespace Assistant.Controllers
                             list.Add(new PendingTranslation { Id = id, Segments = segments });
                     }
                 }
+                if (values != null && values.Length > list.Count)
+                    TranslationController.LogEvent("翻译", "跳过 " + (values.Length - list.Count) + " 条空的待翻译项");
                 return list;
             }
 
@@ -875,7 +924,7 @@ namespace Assistant.Controllers
                 string segmentsJson = serializer.Serialize(segments.Select(segment => new { t = segment.Text, s = segment.Styles }));
                 string idJson = serializer.Serialize(id);
                 string successJs = success ? "true" : "false";
-                string expression = "(function(){ var el = document.querySelector('.chat__messages > li > div[data-gtaw-tid=\\\"' + " + idJson + " + '\\\"]'); var li = el ? el.parentNode : document.querySelector('.chat__messages > li[data-gtaw-tid=\\\"' + " + idJson + " + '\\\"]'); if(!li) return; var segs = " + segmentsJson + "; "
+                string expression = "(function(){ var found = window.__gtawFindTid ? window.__gtawFindTid(" + idJson + ") : null; var el = found ? found.el : null; var li = found ? found.li : null; if(!li) return; var segs = " + segmentsJson + "; "
                     + "function span(seg, color){ var sp = document.createElement('span'); var st = seg.s || []; sp.style.color = color || st[0] || ''; sp.style.fontFamily = st[1] || ''; sp.style.fontSize = st[2] || ''; sp.style.fontStyle = st[3] || ''; sp.style.fontWeight = st[4] || ''; sp.textContent = seg.t || ''; return sp; } "
                     + "if(!(" + successJs + ")){ if(window.__gtawMode === 'replace'){ li.innerHTML = li.__gtawOriginalHtml || ''; li.__gtawTranslated = false; li.removeAttribute('data-gtaw-tid'); li.__gtawPendingId = null; } else if(el){ el.innerHTML = ''; el.appendChild(span({ t: '(translation failed)', s: segs.length ? segs[segs.length - 1].s : null }, '#ff6b6b')); } return; } "
                     + "if(window.__gtawMode === 'replace'){ li.innerHTML = ''; for(var i = 0; i < segs.length; i++){ li.appendChild(span(segs[i])); } li.__gtawTranslated = true; li.removeAttribute('data-gtaw-tid'); li.__gtawPendingId = null; if(el && el.parentNode){ el.parentNode.removeChild(el); } return; } "
@@ -916,8 +965,12 @@ namespace Assistant.Controllers
                 string toastOnJson = serializer.Serialize((toastPrefix ?? string.Empty) + (toastOn ?? string.Empty));
                 string toastOffJson = serializer.Serialize((toastPrefix ?? string.Empty) + (toastOff ?? string.Empty));
                 string toastFlag = showToasts ? "true" : "false";
-                string hook = "(function(){ if(window.__gtawSendVersion === 15){ window.__gtawSendHotkey = " + keyJson + "; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastSendOn = " + toastOnJson + "; window.__gtawToastSendOff = " + toastOffJson + "; return; } window.__gtawSendVersion = 15; "
+                string sendOwnerJson = serializer.Serialize(contextOwnerId ?? string.Empty);
+                string hook = "(function(){ if(window.__gtawSendVersion === 16){ document.documentElement.setAttribute('data-gtaw-send-owner', " + sendOwnerJson + "); window.__gtawSendHotkey = " + keyJson + "; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastSendOn = " + toastOnJson + "; window.__gtawToastSendOff = " + toastOffJson + "; return; } window.__gtawSendVersion = 16; "
                     + "window.__gtawSendActive = false; window.__gtawSendVisible = false; window.__gtawSendResult = null; window.__gtawSendHotkey = " + keyJson + "; window.__gtawSendDiag = null; window.__gtawShowToasts = " + toastFlag + "; window.__gtawToastSendOn = " + toastOnJson + "; window.__gtawToastSendOff = " + toastOffJson + "; "
+                    + "document.documentElement.setAttribute('data-gtaw-send-owner', " + sendOwnerJson + "); "
+                    + "function gtawSendDropOwnership(){ if(window.__gtawSendKeyHandler){ document.removeEventListener('keydown', window.__gtawSendKeyHandler, true); window.__gtawSendKeyHandler = null; } if(window.__gtawSendPlaceTimer){ clearInterval(window.__gtawSendPlaceTimer); window.__gtawSendPlaceTimer = null; } if(window.__gtawSendVisTimer){ clearInterval(window.__gtawSendVisTimer); window.__gtawSendVisTimer = null; } if(window.__gtawSendFastTimer){ clearInterval(window.__gtawSendFastTimer); window.__gtawSendFastTimer = null; } if(window.__gtawSendLease){ clearInterval(window.__gtawSendLease); window.__gtawSendLease = null; } if(window.__gtawSendBtn && window.__gtawSendBtn.parentNode){ window.__gtawSendBtn.parentNode.removeChild(window.__gtawSendBtn); window.__gtawSendBtn = null; } var ov = document.getElementById('gtaw-send-overlay'); if(ov && ov.parentNode){ ov.parentNode.removeChild(ov); } delete window.__gtawSendToggle; delete window.__gtawSendSync; delete window.__gtawSendVersion; } "
+                    + "window.__gtawSendLease = setInterval(function(){ if(document.documentElement.getAttribute('data-gtaw-send-owner') !== " + sendOwnerJson + "){ gtawSendDropOwnership(); } }, 2000); "
                     + "if(window.__gtawSendKeyHandler){ document.removeEventListener('keydown', window.__gtawSendKeyHandler, true); } "
                     + "if(window.__gtawSendPlaceTimer){ clearInterval(window.__gtawSendPlaceTimer); } "
                     + "if(window.__gtawSendVisTimer){ clearInterval(window.__gtawSendVisTimer); } "
@@ -955,10 +1008,13 @@ namespace Assistant.Controllers
             /// </summary>
             public void UninstallSendHook()
             {
-                const string uninstallExpression = "if(window.__gtawSendKeyHandler){ document.removeEventListener('keydown', window.__gtawSendKeyHandler, true); } "
+                string sendOwnerJson = serializer.Serialize(contextOwnerId ?? string.Empty);
+                string uninstallExpression = "if(window.__gtawSendKeyHandler){ document.removeEventListener('keydown', window.__gtawSendKeyHandler, true); } "
                     + "if(window.__gtawSendPlaceTimer){ clearInterval(window.__gtawSendPlaceTimer); } "
                     + "if(window.__gtawSendVisTimer){ clearInterval(window.__gtawSendVisTimer); } "
                     + "if(window.__gtawSendFastTimer){ clearInterval(window.__gtawSendFastTimer); } "
+                    + "if(window.__gtawSendLease){ clearInterval(window.__gtawSendLease); window.__gtawSendLease = null; } "
+                    + "if(document.documentElement.getAttribute('data-gtaw-send-owner') === " + sendOwnerJson + "){ document.documentElement.removeAttribute('data-gtaw-send-owner'); } "
                     + "if(window.__gtawSendBtn && window.__gtawSendBtn.parentNode){ window.__gtawSendBtn.parentNode.removeChild(window.__gtawSendBtn); } "
                     + "if(window.__gtawSendDragMove){ document.removeEventListener('mousemove', window.__gtawSendDragMove); } if(window.__gtawSendDragUp){ document.removeEventListener('mouseup', window.__gtawSendDragUp); } if(window.__gtawSendResizeMove){ document.removeEventListener('mousemove', window.__gtawSendResizeMove); } if(window.__gtawSendResizeUp){ document.removeEventListener('mouseup', window.__gtawSendResizeUp); } "
                     + "var ov = document.getElementById('gtaw-send-overlay'); if(ov && ov.parentNode){ ov.parentNode.removeChild(ov); } var tt = document.getElementById('gtaw-toast'); if(tt && tt.parentNode){ tt.parentNode.removeChild(tt); } "
@@ -1237,6 +1293,7 @@ namespace Assistant.Controllers
                     throw new IOException("GTAW HUD context is unavailable.");
 
                 contextId = Convert.ToInt32(world["executionContextId"]);
+                contextOwnerId = Guid.NewGuid().ToString("N");
             }
 
             private IDictionary<string, object> GetRootTarget()

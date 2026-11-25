@@ -64,6 +64,10 @@ namespace Assistant
             LocalizationController.InitializeLocale();
             AppController.InitializeServerIp();
             SpecialNounsController.EnsureDefaults();
+            TranslationController.LogEvent("app", "启动检查: 聊天翻译=" + Settings.Default.TranslationEnabled
+                + " 自动翻译=" + Settings.Default.AutoTranslate
+                + " 服务商=" + Settings.Default.TranslationProvider
+                + " 模型=" + Settings.Default.CustomModel);
 
             if (!Settings.Default.HasPickedLanguage)
             {

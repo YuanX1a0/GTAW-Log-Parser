@@ -84,6 +84,7 @@
   "UpdateAvailable": "A new version of the chat log parser is now available on GitHub.\n\nInstalled Version: {0}\nAvailable Version: {1}\n\nWould you like to visit the releases page now?",
   "UpdateAvailableTitle": "Update Available",
   "VersionInfo": "{0}{1}",
+  "UpdateBanner": "v{0} available",
   "Warning": "Warning",
   "SettingsTitle": "Program Settings",
   "SettingsTitleBar": "Title Bar",

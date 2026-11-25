@@ -842,6 +842,12 @@ namespace Assistant.Localization {
                 return ResourceManager.GetString("UpdateAvailableTitle", resourceCulture);
             }
         }
+
+        internal static string UpdateBanner {
+            get {
+                return ResourceManager.GetString("UpdateBanner", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to {0}{1}.

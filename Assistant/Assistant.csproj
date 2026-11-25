@@ -75,6 +75,7 @@
     <Compile Include="Controllers\TranslationStats.cs" />
     <Compile Include="Controllers\ApiUsageTracker.cs" />
     <Compile Include="Controllers\SpecialNounsController.cs" />
+    <Compile Include="Controllers\UpdateController.cs" />
     <Compile Include="UI\Controls\UsageChart.cs" />
     <Compile Include="UI\ProgramSettingsWindow.xaml.cs">
       <DependentUpon>ProgramSettingsWindow.xaml</DependentUpon>

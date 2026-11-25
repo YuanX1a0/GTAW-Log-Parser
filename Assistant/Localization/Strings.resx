@@ -402,6 +402,9 @@ Would you like to visit the releases page now?</value>
   <data name="UpdateAvailableTitle" xml:space="preserve">
     <value>Update Available</value>
   </data>
+  <data name="UpdateBanner" xml:space="preserve">
+    <value>v{0} available</value>
+  </data>
   <data name="VersionInfo" xml:space="preserve">
     <value>{0}{1}</value>
   </data>

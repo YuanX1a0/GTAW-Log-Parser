@@ -38,6 +38,16 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="16,18,16,10">
                     <TextBlock x:Name="AppTitle" Text="GTA World聊天助手" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <Button x:Name="UpdateBanner" Click="UpdateBanner_Click" Style="{StaticResource FluentAccentButton}"
+                            Visibility="Collapsed" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                            Padding="8,6" Margin="0,10,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="Download" Width="14" Height="14"
+                                                       Foreground="{DynamicResource FluentAccentForeground}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="UpdateBannerText" Margin="8,0,0,0" FontSize="12" FontWeight="Normal"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="16,10,16,16">
